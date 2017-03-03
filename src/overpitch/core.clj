@@ -1,4 +1,5 @@
 (ns overpitch.core)
+(use 'overtone.live)
 
 (defn add-at-index
   "Merges two vectors at position pos in the first vector. Overlapping elements
@@ -12,7 +13,7 @@
   (let [result-length (max (count v1) (+ (count v2) pos))
         ; v1* is v1 filled with zeros so that its length reaches result-length
         v1* (into v1 (repeat (max 0 (- result-length (count v1))) 0))
-        v2* (into (repeat (max 0 (- result-length (count v2))) 0) v2)]
+        v2* (into (vec (repeat (max 0 (- result-length (count v2))) 0)) v2)]
     (mapv + v1* v2*)
   )
 )
@@ -20,8 +21,8 @@
 (defn hann-window
   [x]
   (cond
-    (< x 0) 0
-    (> x 1) 0
+    (<= x 0) 0
+    (>= x 1) 0
     :else (* 0.5 (- 1 (Math/cos (* 2 Math/PI x))))
   )
 )
@@ -29,7 +30,7 @@
 (defn transform-frame
   [frame]
   (let [length (count frame)]
-    (mapv #(* (hann-window (/ (% 0) length)) (% 1)) (map-indexed vector frame))
+    (mapv #(* (hann-window (/ (% 0) (dec length))) (% 1)) (map-indexed vector frame))
   )
 )
 
