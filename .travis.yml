@@ -4,5 +4,8 @@ addons:
   apt:
     packages:
     - jackd
+env:
+  - DISPLAY=:0
 
-before_script: jackd -r -d alsa -r 44100
+before_script:
+  - jackd -r -d alsa -r 44100 &
