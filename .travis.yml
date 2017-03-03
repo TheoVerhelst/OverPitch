@@ -1,1 +1,8 @@
 language: clojure
+
+addons:
+  apt:
+    packages:
+    - jackd
+
+before_script: jackd -r -d alsa -r 44100
