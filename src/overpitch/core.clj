@@ -1,5 +1,6 @@
-(ns overpitch.core)
-(use 'overtone.live)
+(ns overpitch.core
+  (:require [overtone.live :as ov])
+)
 
 (defn add-at-index
   "Merges two vectors at position pos in the first vector. Overlapping elements
@@ -34,10 +35,14 @@
   )
 )
 
-(defn pitch-shift-data
-  "Pitch-shifts the input buffer by the given scale"
-  [input-buffer n-channels scale]
-  (let [length (/ (count input-buffer) n-channels)
+(defn resample
+  [input-data n-channels scale]
+  input-data
+)
+
+(defn time-scale
+  [input-data n-channels scale]
+  (let [length (/ (count input-data) n-channels)
         ; Algorithm parameters
         frame-size 1024
         synthesis-hopsize (/ frame-size 2)
@@ -49,7 +54,7 @@
           ; Add the transformed frame to the result at the synthesis index
           (add-at-index res
             (transform-frame
-              (subvec input-buffer
+              (subvec input-data
                 (* i n-channels)
                 (* (min length (+ i frame-size)) n-channels)
               )
@@ -57,22 +62,35 @@
             (* j n-channels)
           )
         )
-        (map #(if (> % 1) 1 %) res)
+        ; Ensure there is no number greater than 1
+        (map
+          #(cond
+            (> % 1)     1
+            (< % (- 1)) (- 1)
+            :else       %
+          ) res
+        )
       )
     )
   )
 )
 
+(defn pitch-shift
+  "Pitch-shifts the input data vector by the given scale"
+  [input-data n-channels scale]
+  (pitch-shift (resample input-data n-channels scale))
+)
+
 (defn overpitch-shift
-  "Shifts the pitch of a wav file, and write the result to the given path."
+  "Shifts the pitch of a wav file, and writes the result to the given path."
   [input-path output-path scale]
-  (let [input-buffer      (load-sample input-path)
-        input-buffer-info (buffer-info input-buffer)
+  (let [input-buffer      (ov/load-sample input-path)
+        input-buffer-info (ov/buffer-info input-buffer)
         n-channels        (:n-channels input-buffer-info)
-        output-buffer     (buffer (:size input-buffer-info) n-channels)
-        pitched-data      (pitch-shift-data (vec (buffer-data input-buffer)) n-channels scale)]
+        output-buffer     (ov/buffer (:size input-buffer-info) n-channels)
+        pitched-data      (pitch-shift (vec (ov/buffer-data input-buffer)) n-channels scale)]
     (println (filter #(> % 1) pitched-data))
-    (write-wav pitched-data output-path (:rate input-buffer-info) n-channels)
+    (ov/write-wav pitched-data output-path (:rate input-buffer-info) n-channels)
   )
 )
 
