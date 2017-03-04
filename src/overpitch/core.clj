@@ -65,12 +65,12 @@
 
 (defn overpitch-shift
   "Shifts the pitch of a wav file, and write the result to the given path."
-  [input-path output-path]
+  [input-path output-path scale]
   (let [input-buffer      (load-sample input-path)
         input-buffer-info (buffer-info input-buffer)
         n-channels        (:n-channels input-buffer-info)
         output-buffer     (buffer (:size input-buffer-info) n-channels)
-        pitched-data      (pitch-shift-data (vec (buffer-data input-buffer)) n-channels 1)]
+        pitched-data      (pitch-shift-data (vec (buffer-data input-buffer)) n-channels scale)]
     (println (filter #(> % 1) pitched-data))
     (write-wav pitched-data output-path (:rate input-buffer-info) n-channels)
   )
@@ -79,5 +79,5 @@
 (defn -main
   "Main function"
   [& args]
-  (overpitch-shift "test.wav" "out.wav")
+  (overpitch-shift "test.wav" "out.wav" 1)
 )
