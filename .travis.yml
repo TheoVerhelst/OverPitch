@@ -4,7 +4,11 @@ addons:
   apt:
     packages:
     - jackd
+    - jack-tools
+    - ant
+    - openjdk-6-jdk
+    - fftw3
 env:
   - DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
 
-before_script: jackd -r -d alsa -r 44100 &
+before_script: sudo jackd -r -d alsa -r 44100 &
