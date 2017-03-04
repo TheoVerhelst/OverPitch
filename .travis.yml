@@ -11,4 +11,6 @@ addons:
 env:
   - DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
 
-before_script: sudo jackd -r -d alsa -r 44100 &
+before_script:
+  - sudo jackd -r -d dummy -r 44100 &
+  - sleep 10s
