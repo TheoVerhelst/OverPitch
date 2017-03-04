@@ -5,7 +5,6 @@ addons:
     packages:
     - jackd
 env:
-  - DISPLAY=:0
+  - DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
 
-before_script:
-  - jackd -r -d alsa -r 44100 &
+before_script: jackd -r -d alsa -r 44100 &
