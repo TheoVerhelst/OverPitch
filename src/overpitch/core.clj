@@ -20,6 +20,10 @@
 )
 
 (defn hann-window
+  "The hann window function is defined as 0.5*(1 - cos(2*pi*x)), for x in [0, 1].
+  It allows a smooth fading at the limits of a sound frame, and has nice
+  mathematical properties.
+  "
   [x]
   (cond
     (<= x 0) 0
@@ -28,14 +32,34 @@
   )
 )
 
+(defn apply-hann-window
+  "Apply the hann window function to a frame having the given number of channels."
+  [frame n-channels]
+  ; The dec makes hann-window output [0 0.5 1 0.5 0] rather than [0 0.34 0.9 0.9 0.34]
+  (let [length (dec (/ (count frame) n-channels))]
+    (vec (map-indexed
+      ; quot function allows to make abstraction of n-channels,
+      ; and then / function maps [0, n] to [0, 1]
+      (fn [i x] (* (hann-window (/ (quot i n-channels) length)) x))
+      frame
+    ))
+  )
+)
+
 (defn transform-frame
-  [frame]
-  (let [length (count frame)]
-    (mapv #(* (hann-window (/ (% 0) (dec length))) (% 1)) (map-indexed vector frame))
+  "Transform the frame according to the phase vocoder, in order to time-scale it."
+  [frame n-channels scale]
+  (let [frame (apply-hann-window frame n-channels)]
+    frame
   )
 )
 
 (defn resample
+  "Resample the input frame to the given scale. For exemple, if the scale
+  parameter is 2, then the output will have two times more samples (the lacking
+  samples will be calculated). If the sound is then played at the original
+  sampling rate, it will sound lower-pitched (exactly one octave lower).
+  "
   [input-data n-channels scale]
   input-data
 )
@@ -58,6 +82,7 @@
                 (* i n-channels)
                 (* (min length (+ i frame-size)) n-channels)
               )
+              n-channels scale
             )
             (* j n-channels)
           )
@@ -78,7 +103,7 @@
 (defn pitch-shift
   "Pitch-shifts the input data vector by the given scale"
   [input-data n-channels scale]
-  (pitch-shift (resample input-data n-channels scale))
+  (time-scale (resample input-data n-channels scale) n-channels scale)
 )
 
 (defn overpitch-shift
