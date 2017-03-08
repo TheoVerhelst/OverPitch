@@ -123,14 +123,14 @@
 
 (defn merge-channels
   [channels-data]
-  (reduce conj (apply mapv vector channels-data))
+  (reduce into (apply mapv vector channels-data))
 )
 
 (defn split-channels
   [input-data n-channels]
   (for [channel (range n-channels)]
     (vec
-      (for [[x i] (map-indexed vector input-data)
+      (for [[i x] (map-indexed vector input-data)
             :when (= (mod i n-channels) channel)]
         x
       )
@@ -171,5 +171,5 @@
 (defn -main
   "Main function"
   [& args]
-  (overpitch-shift "test.wav" "out.wav" 1)
+  (overpitch-shift "test.wav" "out.wav" 2)
 )
