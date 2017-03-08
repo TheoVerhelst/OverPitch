@@ -131,7 +131,7 @@
   (for [channel (range n-channels)]
     (vec
       (for [[x i] (map-indexed vector input-data)
-            :when (= (mod i) channel)]
+            :when (= (mod i n-channels) channel)]
         x
       )
     )
@@ -154,16 +154,17 @@
   "Shifts the pitch of a wav file, and writes the result to the given path."
   [input-path output-path scale]
   ; If scale is 1, just copy the file to the output-path
-  ;(when (= scale 1)
-  ;  (io/copy (io/file input-path) (io/file output-path))
-  ;)
-  (let [input-buffer      (ov/load-sample input-path)
-        input-buffer-info (ov/buffer-info input-buffer)
-        n-channels        (:n-channels input-buffer-info)
-        output-buffer     (ov/buffer (:size input-buffer-info) n-channels)
-        pitched-data      (pitch-shift (vec (ov/buffer-data input-buffer)) n-channels scale)]
-    (println (filter #(> % 1) pitched-data))
-    (ov/write-wav pitched-data output-path (:rate input-buffer-info) n-channels)
+  (if (= scale 1)
+    (io/copy (io/file input-path) (io/file output-path))
+    ; else
+    (let [input-buffer      (ov/load-sample input-path)
+          input-buffer-info (ov/buffer-info input-buffer)
+          n-channels        (:n-channels input-buffer-info)
+          output-buffer     (ov/buffer (:size input-buffer-info) n-channels)
+          pitched-data      (pitch-shift (vec (ov/buffer-data input-buffer)) n-channels scale)]
+      (println pitched-data)
+      (ov/write-wav pitched-data output-path (:rate input-buffer-info) n-channels)
+    )
   )
 )
 
