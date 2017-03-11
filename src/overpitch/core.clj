@@ -2,6 +2,7 @@
   (:require [overtone.live :as ov]
             [clojure.math.numeric-tower :as math]
             [clojure.java.io :as io]
+            [clojure.core.matrix :as matrix]
   )
 )
 
@@ -58,6 +59,26 @@
   )
 )
 
+(defn linear-interpolation
+  "Returns a function that interpolates linearily between y1 and y2.
+  This function also uses y0 and y3, so that it has the same interface as a
+  cubic spline interpolation."
+  [y0 y1 y2 y3]
+  (fn [t] (+ y1 (* t (- y2 y1))))
+)
+
+(defn cubic-spline-interpolation
+  "Returns a function that interpolates with cubic spline between y1 and y2."
+  [y0 y1 y2 y3]
+  (let [interpolation-matrix [[1 0 0 0][0 0 0 0][-3 3 -1 0.5][2 -2 0.5 0.5]]
+        factors (matrix/mmul interpolation-matrix [y1 y2 (- y2 y0) (- y3 y1)])]
+    (fn
+      [t]
+      (matrix/inner-product factors (for [i (range 4)] (math/expt t i)))
+    )
+  )
+)
+
 (defn resample
   "Resample the input frame to the given scale. For exemple, if the scale
   parameter is 2, then the output will have two times more samples (the lacking
@@ -66,21 +87,30 @@
   "
   [input-data scale]
   (let [in-length  (count input-data)
-        out-length (int (* in-length scale))
+        out-length (math/floor (* in-length scale))
         input-step (/ 1 (dec in-length))]
     (vec
-      (for [i (range out-length)]
+      ; First and last samples are treated separately
+      (for [i (range 1 out-length)
         ; the t variables and input-step are numbers in [0, 1] that represent
         ; absolutely the position in the buffer, where 1 is the end of the
         ; buffer. This allows to compare input and output positions easily.
-        (let [t           (/ i out-length)
-              prev-sample (math/floor (/ i scale))
-              next-sample (math/ceil (/ i scale))
-              prev-t      (/ prev-sample in-length)
-              next-t      (/ next-sample in-length)
-              prev-value  (input-data prev-sample)
-              next-value  (input-data next-sample)]
-          (+ prev-value (* (- next-value prev-value) (/ (- t prev-t) input-step)))
+        :let [t          (/ i out-length)
+              prev-i     (math/floor (/ i scale))
+              next-i     (math/ceil (/ i scale))
+              prev-t     (/ prev-i in-length)
+              next-t     (/ next-i in-length)
+              prev-value (input-data (max 0 prev-i))
+              next-value (input-data (min next-i (dec in-length)))]]
+        (do
+          (println "t" t  "prev-i" prev-i  "next-i" next-i
+            "prev-t" prev-t  "next-t" next-t  "prev-value"
+             prev-value  "next-value" next-value)
+        (cond
+            (= t prev-t) prev-value
+            (= t next-t) next-value
+            :else (+ prev-value (* (- next-value prev-value) (/ (- t prev-t) (- next-t prev-t))))
+        )
         )
       )
     )
@@ -162,7 +192,6 @@
           n-channels        (:n-channels input-buffer-info)
           output-buffer     (ov/buffer (:size input-buffer-info) n-channels)
           pitched-data      (pitch-shift (vec (ov/buffer-data input-buffer)) n-channels scale)]
-      (println pitched-data)
       (ov/write-wav pitched-data output-path (:rate input-buffer-info) n-channels)
     )
   )
