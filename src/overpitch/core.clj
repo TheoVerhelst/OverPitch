@@ -87,24 +87,22 @@
   "
   [input-data scale]
   (let [in-length  (count input-data)
-        out-length (math/floor (* in-length scale))
-        input-step (/ 1 (dec in-length))]
+        out-length (math/floor (* in-length scale))]
     (vec
-            ; i is the output index
-      (for [i  (range 1 out-length)
-            ; j is i scaled in order to compare it to input indices
-      :let [j  (/ i scale)
-            j1 (math/floor j)
-            j2 (min (dec in-length) (math/ceil j))
-            j0 (max 0 (dec j1))
-            j3 (min (dec in-length) (inc j2))
-            ; t is a value between 0 and 1, that matches the position
-            ; of the output sample relatively to the surrounding input samples
-            t  (- j j1)
-            ; values is a vector of input values for each index
-            values (mapv input-data [j0 j1 j2 j3])]]
-        (do
-          (println "i" i " j" j " jn" [j0 j1 j2 j3] " t" t " values" values)
+      (cons (first input-data)
+              ; i is the output index
+        (for [i  (range 1 out-length)
+              ; j is i scaled in order to compare it to input indices
+        :let [j  (/ i scale)
+              j1 (int j)
+              j2 (min (dec in-length) (inc j1))
+              j0 (max 0 (dec j1))
+              j3 (min (dec in-length) (inc j2))
+              ; t is a value between 0 and 1, that matches the position
+              ; of the output sample relatively to the surrounding input samples
+              t  (- j j1)
+              ; values is a vector of input values for each index
+              values (mapv input-data [j0 j1 j2 j3])]]
           (cond
               (= t 0) (values 1)
               (= t 1) (values 2)
