@@ -4,8 +4,6 @@
     [org.clojure/clojure "1.8.0"]
     [overtone "0.10.1"]
     [org.clojure/math.numeric-tower "0.0.4"]
-    [net.mikera/core.matrix "0.57.0"]
-  ]
+    [net.mikera/core.matrix "0.57.0"]]
   :main ^:skip-aot overpitch.core
-  :jvm-opts ^:replace []
-)
+  :jvm-opts ^:replace [])
