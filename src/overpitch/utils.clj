@@ -17,7 +17,12 @@
     (mapv + v1* v2*)))
 
 (defn almost-equal
-  "Checks whether the difference between x and y is less than epsilon"
+  "Checks whether the difference between x and y is less than epsilon. If x and
+  y are sequences, then compare each element, and return true is all elements
+  are almost equals respectively to the other sequence."
   [x y]
-  (let [epsilon 0.0000001]
-    (< (math/abs (- x y)) epsilon)))
+  (let [epsilon 0.0000001
+        compare_ (fn [a b] (< (math/abs (- a b)) epsilon))]
+    (if (sequential? x)
+      (every? true? (map compare_ x y))
+      (compare_ x y))))

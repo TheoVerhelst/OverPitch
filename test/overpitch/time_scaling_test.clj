@@ -19,5 +19,5 @@
 
 (deftest apply-hann-window-test
   (testing "Testing the hann window transformation on a frame"
-    (is (every? true? (map almost-equal [0 0.5 1 0.5 0] (apply-hann-window [1 1 1 1 1]))))
-    (is (every? true? (map almost-equal [0 (- 0.5) -1 (- 0.5) 0] (apply-hann-window [-1 -1 -1 -1 -1]))))))
+    (is (almost-equal [0 0.5 1 0.5 0] (apply-hann-window [1 1 1 1 1])))
+    (is (almost-equal [0 (- 0.5) -1 (- 0.5) 0] (apply-hann-window [-1 -1 -1 -1 -1])))))
