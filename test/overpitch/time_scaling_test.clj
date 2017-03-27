@@ -9,9 +9,9 @@
     (is (== 0 (hann-window 0)))
     (is (== 0 (hann-window 1)))
     (is (== 0 (hann-window 2.3)))
-    (is (are-close 1 (hann-window 0.5)))
-    (is (are-close 0.5 (hann-window 0.25)))
-    (is (are-close 0.5 (hann-window 0.75)))
+    (is (almost-equal 1 (hann-window 0.5)))
+    (is (almost-equal 0.5 (hann-window 0.25)))
+    (is (almost-equal 0.5 (hann-window 0.75)))
     (is (< 0 (hann-window 0.1) 0.5))
     (is (< 0 (hann-window 0.82) 0.5))
     (is (< 0.5 (hann-window 0.44) 1))
@@ -19,5 +19,5 @@
 
 (deftest apply-hann-window-test
   (testing "Testing the hann window transformation on a frame"
-    (is (every? true? (map are-close [0 0.5 1 0.5 0] (apply-hann-window [1 1 1 1 1]))))
-    (is (every? true? (map are-close [0 (- 0.5) -1 (- 0.5) 0] (apply-hann-window [-1 -1 -1 -1 -1]))))))
+    (is (every? true? (map almost-equal [0 0.5 1 0.5 0] (apply-hann-window [1 1 1 1 1]))))
+    (is (every? true? (map almost-equal [0 (- 0.5) -1 (- 0.5) 0] (apply-hann-window [-1 -1 -1 -1 -1]))))))

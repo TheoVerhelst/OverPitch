@@ -16,7 +16,7 @@
         v2* (into (vec (repeat (max 0 (- result-length (count v2))) 0)) v2)]
     (mapv + v1* v2*)))
 
-(defn are-close
+(defn almost-equal
   "Checks whether the difference between x and y is less than epsilon"
   [x y]
   (let [epsilon 0.0000001]
