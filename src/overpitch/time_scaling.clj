@@ -10,7 +10,7 @@
   (cond
     (<= x 0) 0
     (>= x 1) 0
-    :else (* 0.5 (- 1 (Math/cos (* 2 Math/PI x)))))) ; TODO Try to use clojure.math.numeric-tower rather than Math
+    :else (* 0.5 (- 1 (Math/cos (* 2 Math/PI x))))))
 
 (defn apply-hann-window
   "Apply the hann window function to a frame."

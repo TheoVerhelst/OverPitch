@@ -2,6 +2,19 @@
   (:require [clojure.test :refer :all]
             [overpitch.resampling :refer :all]))
 
+(deftest linear-interpolation-test
+  (testing "Testing linear interpolation"
+    (is (= (linear-interpolation [0 0.3 -0.6 1] 0) 0.3))
+    (is (= (linear-interpolation [0 0.12 -0.33 1] 1) -0.33))
+    (is (= (linear-interpolation [0 0.2 0.8 1] 0.5) 0.5))
+    (is (= (linear-interpolation [0 0.2 -0.3 1] 0.8) -0.2))))
+
+(deftest cubic-spline-interpolation-test
+  (testing "Testing cubic spline interpolation"
+    (is (= (cubic-spline-interpolation [0.2 0.2 0.2 0.2] 0.3) 0.2) "with constant values")
+    (is (= (cubic-spline-interpolation [0 1 0.25 1] 1) 0.25))
+    (is (= (cubic-spline-interpolation [0 -0.8 0.3 1] 0) -0.8))))
+
 (deftest resample-test
   (testing "Testing resampling"
     (is (= [1 0 -1 0 1 0 -1 0 1 0 -1 -1]
