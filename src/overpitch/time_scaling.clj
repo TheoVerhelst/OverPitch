@@ -68,6 +68,10 @@
         (- next-phase phase (* (time-frequencies k) analysis-hoptime)))
       analysis-hoptime)))
 
+(defn propagate-phase
+  [phase frequency]
+    (+ phase (* frequency synthesis-hoptime)))
+
 (defn transform-frame
   "Transforms the frame according to the phase vocoder, in order to time-scale it."
   [frame scale]
@@ -83,15 +87,16 @@
         (if (< k frame-size)
           (recur
             (inc k)
-            ; The next modified phase is the sum of the previous one and the
-            ; real phase advance
             (conj modified-phases
-              (+ (last modified-phases)
-                 (* (last instantaneous-frequencies) synthesis-hoptime)))
+              (propagate-phase (last modified-phases) (last instantaneous-frequencies))
             (conj instantaneous-frequencies
               (phase-vocoder k (phases k) (phases (inc k)) analysis-hoptime)))
-          modified-phases)))))
+          modified-phases))))))
 
+(defn clip
+  ; TODO Move this in core
+  [signal]
+  (mapv #(max -1 (min 1 %)) signal))
 
 (defn time-scale
   [input-data scale]
@@ -100,17 +105,12 @@
     ; Loop over the analysed buffer: i is the analysis index, j the synthesis index
     (loop [i 0 j 0 res []]
       (if (< i length)
-        (recur (+ i analysis-hopsize) (+ j synthesis-hopsize)
-          ; Add the transformed frame to the result at the synthesis index
-          (utils/add-at-index res
-            (transform-frame
-              (subvec input-data i (min length (+ i frame-size)))
-              scale)
-            j))
-        ; There is the returned value
-        ; Ensure there is no number greater than 1 in res
-        (map
-          #(cond
-            (> % 1)     1
-            (< % (- 1)) (- 1)
-            :else       %) res)))))
+        (let [analysis-frame  (subvec input-data i (min length (+ i frame-size)))
+              synthesis-frame (apply-hann-window (transform-frame scale))]
+          (recur
+            (+ i analysis-hopsize)
+            (+ j synthesis-hopsize)
+            ; Add the transformed frame to the result at the synthesis index
+            (utils/add-at-index res synthesis-frame j)))
+        ; This is the returned value
+        (clip res)))))
