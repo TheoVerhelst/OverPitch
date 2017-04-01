@@ -4,7 +4,12 @@
             [overpitch.resampling :refer [resample]]
             [overpitch.time-scaling :refer [time-scale]]
             [overpitch.pitch-shifting :refer [pitch-shift]]
-            [overpitch.utils :refer [split-channels merge-channels]]))
+            [overpitch.utils :refer [split-channels merge-channels]])
+  (:gen-class))
+
+(defn clip
+  [signal]
+  (mapv #(max -1 (min 1 %)) signal))
 
 (defn transform-wav
   "Transform the content of a wav file, and writes the result to the given path."
@@ -18,9 +23,10 @@
           n-channels           (:n-channels input-buffer-info)
           input-data           (vec (overtone/buffer-data input-buffer))]
       (overtone/write-wav
-        (merge-channels
-          (for [channel (split-channels input-data n-channels)]
-            (transformation channel scale)))
+        (clip
+          (merge-channels
+            (for [channel (split-channels input-data n-channels)]
+              (transformation channel scale))))
         output-path (:rate input-buffer-info) n-channels))))
 
 (defn -main

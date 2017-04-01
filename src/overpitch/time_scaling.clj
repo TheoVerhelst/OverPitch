@@ -6,7 +6,7 @@
 ; Algorithm parameters
 (def frame-size 1024)
 (def synthesis-hopsize (/ frame-size 2))
-(def sampling-rate 44100)
+(def sampling-rate 44100) ; TODO parametrize this
 (def synthesis-hoptime (/ synthesis-hopsize sampling-rate))
 (def time-frequencies (mapv #(/ (* % sampling-rate) frame-size) (range frame-size)))
 
@@ -72,8 +72,9 @@
   [phase frequency]
     (+ phase (* frequency synthesis-hoptime)))
 
-(defn transform-frame
-  "Transforms the frame according to the phase vocoder, in order to time-scale it."
+(defn time-scale-frame
+  "Time-scales the frame according to the phase vocoder and phase propagation
+  techniques."
   [frame scale]
   (let [analysis-hopsize    (/ synthesis-hopsize scale)
         analysis-hoptime    (/ analysis-hopsize sampling-rate)
@@ -93,24 +94,19 @@
               (phase-vocoder k (phases k) (phases (inc k)) analysis-hoptime)))
           modified-phases))))))
 
-(defn clip
-  ; TODO Move this in core
-  [signal]
-  (mapv #(max -1 (min 1 %)) signal))
+(defn overlap-and-add-frames
+  [frames]
+  (loop [m 0 res []]
+    (if (< m (count frames))
+      (recur (inc m) (utils/add-at-index res (frames m) (* m synthesis-hopsize)))
+      res)))
 
 (defn time-scale
   [input-data scale]
   (let [length           (count input-data)
+        frame-count      (/ length frame-size)
         analysis-hopsize (/ synthesis-hopsize scale)]
-    ; Loop over the analysed buffer: i is the analysis index, j the synthesis index
-    (loop [i 0 j 0 res []]
-      (if (< i length)
-        (let [analysis-frame  (subvec input-data i (min length (+ i frame-size)))
-              synthesis-frame (apply-hann-window (transform-frame scale))]
-          (recur
-            (+ i analysis-hopsize)
-            (+ j synthesis-hopsize)
-            ; Add the transformed frame to the result at the synthesis index
-            (utils/add-at-index res synthesis-frame j)))
-        ; This is the returned value
-        (clip res)))))
+    (overlap-and-add-frames
+      (for [i (range 0 frame-count analysis-hopsize)
+      :let [analysis-frame  (subvec input-data i (min length (+ i frame-size)))]]
+        (apply-hann-window (time-scale-frame analysis-frame scale))))))
