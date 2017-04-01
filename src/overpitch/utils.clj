@@ -16,6 +16,19 @@
         v2* (into (vec (repeat (max 0 (- result-length (count v2))) 0)) v2)]
     (mapv + v1* v2*)))
 
+
+(defn merge-channels
+  [channels-data]
+  (reduce into (apply mapv vector channels-data)))
+
+(defn split-channels
+  [input-data n-channels]
+  (for [channel (range n-channels)]
+    (vec
+      (for [[i x] (map-indexed vector input-data)
+            :when (= (mod i n-channels) channel)]
+        x))))
+
 (defn almost-equal
   "Checks whether the difference between x and y is less than epsilon. If x and
   y are sequences, then compare each element, and return true is all elements

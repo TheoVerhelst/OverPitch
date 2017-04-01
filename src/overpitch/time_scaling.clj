@@ -1,5 +1,14 @@
 (ns overpitch.time-scaling
-  (:require [overpitch.utils :as utils]))
+  (:require [overpitch.utils :as utils]
+            [clojure.math.numeric-tower :as math]
+            [jtransforms.jtransforms :as jtransforms))
+
+; Algorithm parameters
+(def frame-size 1024)
+(def synthesis-hopsize (/ frame-size 2))
+(def sampling-rate 44100)
+(def synthesis-hoptime (/ synthesis-hopsize sampling-rate))
+(def time-frequencies (mapv #(/ (* %0  %1) %2) (range frame-size) sampling-rate frame-size))
 
 (defn hann-window
   "The hann window function is defined as 0.5*(1 - cos(2*pi*x)), for x in [0, 1].
@@ -23,19 +32,57 @@
         (fn [i x] (* (hann-window (/ i length)) x))
         frame))))
 
+(defn dft
+  [frame]
+  (let [result (double-array (* 2 (count frame)) frame)]
+    (jtransforms/realForwardFull result)
+    ; Now result contains real and imaginary values, split them
+    (utils/split-channels result 2)))
+
+(defn idft
+  [frequencies phases]
+  (let [result (double-array (utils/merge-channels frequencies phases))]
+    (jtransforms/complexInverse result false)
+    (first (utils/split-channels result 2))))
+
+(defn map-phase
+  [phase]
+  (loop [phase phase]
+    (cond
+      (< phase -0.5) (recur (inc phase))
+      (> phase 0.5)  (recur (dec phase))
+      :else          phase)))
+
 (defn transform-frame
   "Transforms the frame according to the phase vocoder, in order to time-scale it."
   [frame scale]
-  (let [frame (apply-hann-window frame)]
-    frame))
+  (let [analysis-hopsize     (/ synthesis-hopsize scale)
+        analysis-hoptime     (/ analysis-hopsize sampling-rate)
+        frame                (apply-hann-window frame)
+        [frequencies phases] (dft frame)]
+    ; Call the inverse Fourrier transform with original frequencies
+    (idft frequencies
+      (loop [k 0 modified-phases [] instantaneous-frequencies []]
+        (if (< k frame-size)
+          (recur
+            (inc k)
+            (conj modified-phases
+              (+ (last modified-phases)
+              (* (last instantaneous-frequencies) synthesis-hoptime)))
+            (conj instantaneous-frequencies
+              (+ (time-frequencies k)
+                (/ (map-phase
+                  (-
+                    (last modified-phases)
+                    (last instantaneous-frequencies)
+                    (* (time-frequencies k) analysis-hoptime))
+                  analysis-hoptime))))
+          modified-phases)))))
 
 
 (defn time-scale
   [input-data scale]
-  (let [length (count input-data)
-        ; Algorithm parameters
-        frame-size 1024
-        synthesis-hopsize (/ frame-size 2)
+  (let [length           (count input-data)
         analysis-hopsize (/ synthesis-hopsize scale)]
     ; Loop over the analysed buffer: i is the analysis index, j the synthesis index
     (loop [i 0 j 0 res []]

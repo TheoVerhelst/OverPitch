@@ -3,19 +3,8 @@
             [clojure.java.io :as io]
             [overpitch.resampling :refer [resample]]
             [overpitch.time-scaling :refer [time-scale]]
-            [overpitch.pitch-shifting :refer [pitch-shift]]))
-
-(defn merge-channels
-  [channels-data]
-  (reduce into (apply mapv vector channels-data)))
-
-(defn split-channels
-  [input-data n-channels]
-  (for [channel (range n-channels)]
-    (vec
-      (for [[i x] (map-indexed vector input-data)
-            :when (= (mod i n-channels) channel)]
-        x))))
+            [overpitch.pitch-shifting :refer [pitch-shift]]
+            [overpitch.utils :refer [split-channels merge-channels]]))
 
 (defn transform-wav
   "Transform the content of a wav file, and writes the result to the given path."
