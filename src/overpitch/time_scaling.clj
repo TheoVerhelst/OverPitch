@@ -45,8 +45,8 @@
     (utils/split-channels result 2)))
 
 (defn ifft
-  [frequencies phases]
-  (let [result (double-array (utils/merge-channels frequencies phases))]
+  [magnitudes phases]
+  (let [result (double-array (utils/merge-channels magnitudes phases))]
     (.complexInverse jtransforms-fft-instance result false)
     (first (utils/split-channels result 2))))
 
@@ -58,30 +58,38 @@
       (> phase 0.5)  (recur (dec phase))
       :else          phase)))
 
+(defn phase-vocoder
+  [k phase next-phase analysis-hoptime]
+  ; The next instantaneous frequency is the value of the k-th frequency
+  ; plus a small offset
+  (+ (time-frequencies k)
+    (/
+      (map-phase
+        (- next-phase phase (* (time-frequencies k) analysis-hoptime)))
+      analysis-hoptime)))
+
 (defn transform-frame
   "Transforms the frame according to the phase vocoder, in order to time-scale it."
   [frame scale]
-  (let [analysis-hopsize     (/ synthesis-hopsize scale)
-        analysis-hoptime     (/ analysis-hopsize sampling-rate)
-        frame                (apply-hann-window frame)
-        [frequencies phases] (fft frame)]
+  (let [analysis-hopsize    (/ synthesis-hopsize scale)
+        analysis-hoptime    (/ analysis-hopsize sampling-rate)
+        frame               (apply-hann-window frame)
+        [magnitudes phases] (fft frame)]
     ; Call the inverse Fourrier transform with original frequencies
-    (ifft frequencies
+    (ifft magnitudes
+      ; Loop over all frequencies in order to construct the array of modified
+      ; phases (according to the phase propagation technique in phase vocoder-TSM)
       (loop [k 0 modified-phases [] instantaneous-frequencies []]
         (if (< k frame-size)
           (recur
             (inc k)
+            ; The next modified phase is the sum of the previous one and the
+            ; real phase advance
             (conj modified-phases
               (+ (last modified-phases)
-              (* (last instantaneous-frequencies) synthesis-hoptime)))
+                 (* (last instantaneous-frequencies) synthesis-hoptime)))
             (conj instantaneous-frequencies
-              (+ (time-frequencies k)
-                (/ (map-phase
-                  (-
-                    (last modified-phases)
-                    (last instantaneous-frequencies)
-                    (* (time-frequencies k) analysis-hoptime))
-                  analysis-hoptime)))))
+              (phase-vocoder k (phases k) (phases (inc k)) analysis-hoptime)))
           modified-phases)))))
 
 
