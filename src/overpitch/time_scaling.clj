@@ -1,14 +1,17 @@
 (ns overpitch.time-scaling
   (:require [overpitch.utils :as utils]
-            [clojure.math.numeric-tower :as math]
-            [jtransforms.jtransforms :as jtransforms))
+            [clojure.math.numeric-tower :as math])
+  (:import  (edu.emory.mathcs.jtransforms.fft DoubleFFT_1D)))
 
 ; Algorithm parameters
 (def frame-size 1024)
 (def synthesis-hopsize (/ frame-size 2))
 (def sampling-rate 44100)
 (def synthesis-hoptime (/ synthesis-hopsize sampling-rate))
-(def time-frequencies (mapv #(/ (* %0  %1) %2) (range frame-size) sampling-rate frame-size))
+(def time-frequencies (mapv #(/ (* % sampling-rate) frame-size) (range frame-size)))
+
+; Instantiates a FFT object from jtransforms
+(def jtransforms-fft-instance (new DoubleFFT_1D frame-size))
 
 (defn hann-window
   "The hann window function is defined as 0.5*(1 - cos(2*pi*x)), for x in [0, 1].
@@ -32,17 +35,19 @@
         (fn [i x] (* (hann-window (/ i length)) x))
         frame))))
 
-(defn dft
+(defn fft
   [frame]
   (let [result (double-array (* 2 (count frame)) frame)]
-    (jtransforms/realForwardFull result)
+    ; call realForwardFull method on the jtransforms fft object, with result as
+    ; argument. The array result will be overwritten by the method
+    (.realForwardFull jtransforms-fft-instance result)
     ; Now result contains real and imaginary values, split them
     (utils/split-channels result 2)))
 
-(defn idft
+(defn ifft
   [frequencies phases]
   (let [result (double-array (utils/merge-channels frequencies phases))]
-    (jtransforms/complexInverse result false)
+    (.complexInverse jtransforms-fft-instance result false)
     (first (utils/split-channels result 2))))
 
 (defn map-phase
@@ -59,9 +64,9 @@
   (let [analysis-hopsize     (/ synthesis-hopsize scale)
         analysis-hoptime     (/ analysis-hopsize sampling-rate)
         frame                (apply-hann-window frame)
-        [frequencies phases] (dft frame)]
+        [frequencies phases] (fft frame)]
     ; Call the inverse Fourrier transform with original frequencies
-    (idft frequencies
+    (ifft frequencies
       (loop [k 0 modified-phases [] instantaneous-frequencies []]
         (if (< k frame-size)
           (recur
@@ -76,7 +81,7 @@
                     (last modified-phases)
                     (last instantaneous-frequencies)
                     (* (time-frequencies k) analysis-hoptime))
-                  analysis-hoptime))))
+                  analysis-hoptime)))))
           modified-phases)))))
 
 
