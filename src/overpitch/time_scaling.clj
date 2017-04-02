@@ -41,8 +41,8 @@
     ; call realForwardFull method on the jtransforms fft object, with result as
     ; argument. The array result will be overwritten by the method
     (.realForwardFull jtransforms-fft-instance result)
-    ; Now result contains real and imaginary values, split them
-    (utils/split-channels result 2)))
+    ; Now result contains real and imaginary values, return them in a map
+    (zipmap [:magnitudes :phases] (utils/split-channels result 2))))
 
 (defn ifft
   [magnitudes phases]
@@ -72,27 +72,11 @@
   [phase frequency]
     (+ phase (* frequency synthesis-hoptime)))
 
-(defn time-scale-frame
-  "Time-scales the frame according to the phase vocoder and phase propagation
-  techniques."
-  [frame scale]
-  (let [analysis-hopsize    (/ synthesis-hopsize scale)
-        analysis-hoptime    (/ analysis-hopsize sampling-rate)
-        frame               (apply-hann-window frame)
-        [magnitudes phases] (fft frame)]
-    ; Call the inverse Fourrier transform with original frequencies
-    (ifft magnitudes
-      ; Loop over all frequencies in order to construct the array of modified
-      ; phases (according to the phase propagation technique in phase vocoder-TSM)
-      (loop [k 0 modified-phases [] instantaneous-frequencies []]
-        (if (< k frame-size)
-          (recur
-            (inc k)
-            (conj modified-phases
-              (propagate-phase (last modified-phases) (last instantaneous-frequencies))
-            (conj instantaneous-frequencies
-              (phase-vocoder k (phases k) (phases (inc k)) analysis-hoptime)))
-          modified-phases))))))
+(defn split-in-frames
+  [input-data analysis-hopsize]
+  (let [length (count input-data)]
+    (for [i (range 0 length analysis-hopsize)]
+      (apply-hann-window (subvec input-data i (min length (+ i frame-size)))))))
 
 (defn overlap-and-add-frames
   [frames]
@@ -104,9 +88,31 @@
 (defn time-scale
   [input-data scale]
   (let [length           (count input-data)
-        frame-count      (/ length frame-size)
-        analysis-hopsize (/ synthesis-hopsize scale)]
+        analysis-hopsize (/ synthesis-hopsize scale)
+        analysis-hoptime (/ analysis-hopsize sampling-rate)
+        frames           (mapv apply-hann-window (split-in-frames input-data analysis-hopsize))
+        spectrums        (mapv fft frames)]
     (overlap-and-add-frames
-      (for [i (range 0 frame-count analysis-hopsize)
-      :let [analysis-frame  (subvec input-data i (min length (+ i frame-size)))]]
-        (apply-hann-window (time-scale-frame analysis-frame scale))))))
+      (loop [m                                  0
+             previous-instantaneous-frequencies []
+             previous-modified-phases           []
+             modified-frames                    []]
+        (if (< m (count frame))
+          (let [magnitudes                (:magnitudes (spectrums m))
+                phases                    (:phases (spectrums m))
+                next-phases               (:phases (spectrum (inc m)))
+                instantaneous-frequencies (mapv
+                                            #(phase-vocoder %
+                                              (phases %)
+                                              (next-phases %)
+                                              analysis-hoptime)
+                                            (range frame-size))
+                modified-phases           (mapv
+                                            #(propagate-phase
+                                              (previous-instantaneous-frequencies %)
+                                              (previous-modified-phases %))
+                                            (range frame-size))
+            (recur (inc m) instantaneous-frequencies modified-phases
+              (conj modified-frames
+                (ifft magnitudes modified-phases)))
+        modified-frames))))))
