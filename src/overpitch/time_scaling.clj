@@ -37,7 +37,7 @@
 
 (defn fft
   [frame]
-  (let [result (double-array (* 2 (count frame)) frame)]
+  (let [result (double-array (* 2 frame-size) frame)]
     ; call realForwardFull method on the jtransforms fft object, with result as
     ; argument. The array result will be overwritten by the method
     (.realForwardFull jtransforms-fft-instance result)
@@ -46,7 +46,7 @@
 
 (defn ifft
   [magnitudes phases]
-  (let [result (double-array (utils/merge-channels magnitudes phases))]
+  (let [result (double-array (utils/merge-channels [magnitudes phases]))]
     (.complexInverse jtransforms-fft-instance result false)
     (first (utils/split-channels result 2))))
 
@@ -97,22 +97,25 @@
              previous-instantaneous-frequencies []
              previous-modified-phases           []
              modified-frames                    []]
-        (if (< m (count frame))
+        (if (< m (count frames))
           (let [magnitudes                (:magnitudes (spectrums m))
                 phases                    (:phases (spectrums m))
-                next-phases               (:phases (spectrum (inc m)))
+                next-phases               (:phases (spectrums (inc m)))
                 instantaneous-frequencies (mapv
                                             #(phase-vocoder %
                                               (phases %)
                                               (next-phases %)
                                               analysis-hoptime)
                                             (range frame-size))
-                modified-phases           (mapv
-                                            #(propagate-phase
-                                              (previous-instantaneous-frequencies %)
-                                              (previous-modified-phases %))
-                                            (range frame-size))
+                modified-phases           (if (> 0 m)
+                                            (mapv
+                                              #(propagate-phase
+                                                (previous-instantaneous-frequencies %)
+                                                (previous-modified-phases %))
+                                              (range frame-size))
+                                            ; If we are at m = 0, then the modified phase
+                                            ; is set to the original phase
+                                            phases)]
             (recur (inc m) instantaneous-frequencies modified-phases
-              (conj modified-frames
-                (ifft magnitudes modified-phases)))
-        modified-frames))))))
+              (conj modified-frames (ifft magnitudes modified-phases))))
+        modified-frames)))))
