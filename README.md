@@ -1,19 +1,16 @@
 # OverPitch
-This library is just an implementation of state-of-the-art pitch-shifting
-algorithms.
+This library is an implementation of state-of-the-art pitch-shifting algorithms.
 
 ## Usage
-Given a .wav file, you can pitch-shift it by calling
+Given a .wav file, you can pitch-shift it by a factor 1.2 by calling
 
 ```clj
-(overpitch-shift "your-audio-file.wav" "output.wav")
+(-main "your-audio-file.wav" "output.wav" 1.2)
 ```
 
 The result will be written in `output.wav`.
 
 ## License
-
-Copyright © 2017 FIXME
 
 Distributed under the Eclipse Public License either version 1.0 or any later v
 rsion.
