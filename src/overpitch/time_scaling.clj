@@ -111,5 +111,5 @@
                                    ; is set to the original phase
                                    phases)]
             (recur (inc m) inst-frequencies mod-phases
-              (conj modified-frames (ifft magnitudes mod-phases))))
+              (conj modified-frames (apply-hann-window (ifft magnitudes mod-phases)))))
         modified-frames)))))
