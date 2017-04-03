@@ -59,24 +59,27 @@
       :else          phase)))
 
 (defn phase-vocoder
-  [k phase next-phase analysis-hoptime]
-  ; The next instantaneous frequency is the value of the k-th frequency
-  ; plus a small offset
-  (+ (time-frequencies k)
-    (/
-      (map-phase
-        (- next-phase phase (* (time-frequencies k) analysis-hoptime)))
-      analysis-hoptime)))
+  [phases next-phases analysis-hoptime]
+  (mapv
+    ; The next instantaneous frequency is the value of the k-th frequency
+    ; plus a small offset
+    #(+ (time-frequencies %)
+      (/
+        (map-phase
+          (- (next-phases %) (phases %) (* (time-frequencies %) analysis-hoptime)))
+        analysis-hoptime))
+    (range frame-size)))
 
 (defn propagate-phase
-  [phase frequency]
-    (+ phase (* frequency synthesis-hoptime)))
+  [frequencies phases]
+    (mapv #(+ (phases %) (* (frequencies %) synthesis-hoptime)) (range frame-size)))
 
 (defn split-in-frames
   [input-data analysis-hopsize]
   (let [length (count input-data)]
-    (for [i (range 0 length analysis-hopsize)]
-      (apply-hann-window (subvec input-data i (min length (+ i frame-size)))))))
+    (mapv
+      #(apply-hann-window (subvec input-data % (min length (+ % frame-size))))
+      (range 0 length analysis-hopsize))))
 
 (defn overlap-and-add-frames
   [frames]
@@ -93,29 +96,20 @@
         frames           (mapv apply-hann-window (split-in-frames input-data analysis-hopsize))
         spectrums        (mapv fft frames)]
     (overlap-and-add-frames
-      (loop [m                                  0
-             previous-instantaneous-frequencies []
-             previous-modified-phases           []
-             modified-frames                    []]
+      (loop [m                     0
+             prev-inst-frequencies []
+             prev-mod-phases       []
+             modified-frames       []]
         (if (< m (count frames))
-          (let [magnitudes                (:magnitudes (spectrums m))
-                phases                    (:phases (spectrums m))
-                next-phases               (:phases (spectrums (inc m)))
-                instantaneous-frequencies (mapv
-                                            #(phase-vocoder %
-                                              (phases %)
-                                              (next-phases %)
-                                              analysis-hoptime)
-                                            (range frame-size))
-                modified-phases           (if (> 0 m)
-                                            (mapv
-                                              #(propagate-phase
-                                                (previous-instantaneous-frequencies %)
-                                                (previous-modified-phases %))
-                                              (range frame-size))
-                                            ; If we are at m = 0, then the modified phase
-                                            ; is set to the original phase
-                                            phases)]
-            (recur (inc m) instantaneous-frequencies modified-phases
-              (conj modified-frames (ifft magnitudes modified-phases))))
+          (let [magnitudes       (:magnitudes (spectrums m))
+                phases           (:phases (spectrums m))
+                next-phases      (:phases (spectrums (inc m)))
+                inst-frequencies (phase-vocoder phases next-phases analysis-hoptime)
+                mod-phases       (if (> 0 m)
+                                   (propagate-phase prev-inst-frequencies prev-mod-phases)
+                                   ; If we are at m = 0, then the modified phase
+                                   ; is set to the original phase
+                                   phases)]
+            (recur (inc m) inst-frequencies mod-phases
+              (conj modified-frames (ifft magnitudes mod-phases))))
         modified-frames)))))
