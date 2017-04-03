@@ -5,5 +5,5 @@
 (defn pitch-shift
   "Pitch-shifts the input data vector by the given scale"
   [input-data scale]
-  (time-scale (resample input-data scale) scale))
+  (resample (time-scale input-data scale) (/ 1 scale)))
 

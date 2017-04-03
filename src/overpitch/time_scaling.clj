@@ -77,9 +77,9 @@
 (defn split-in-frames
   [input-data analysis-hopsize]
   (let [length (count input-data)]
-    (mapv
-      #(apply-hann-window (subvec input-data % (min length (+ % frame-size))))
-      (range 0 length analysis-hopsize))))
+    (for [i     (range 0 length analysis-hopsize)
+    :let [slice (subvec input-data i (min length (+ i frame-size)))]]
+      (apply-hann-window (into slice (repeat 0 (- frame-size length)))))))
 
 (defn overlap-and-add-frames
   [frames]
@@ -103,8 +103,8 @@
         (if (< m (count frames))
           (let [magnitudes       (:magnitudes (spectrums m))
                 phases           (:phases (spectrums m))
-                next-phases      (:phases (spectrums (inc m)))
-                inst-frequencies (phase-vocoder phases next-phases analysis-hoptime)
+                next-phases      (if (< (inc m) (count frames)) (:phases (spectrums (inc m))) nil)
+                inst-frequencies (if (< (inc m) (count frames)) (phase-vocoder phases next-phases analysis-hoptime) nil)
                 mod-phases       (if (> 0 m)
                                    (propagate-phase prev-inst-frequencies prev-mod-phases)
                                    ; If we are at m = 0, then the modified phase

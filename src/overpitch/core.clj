@@ -27,7 +27,8 @@
           (merge-channels
             (for [channel (split-channels input-data n-channels)]
               (transformation channel scale))))
-        output-path (:rate input-buffer-info) n-channels))))
+        output-path (:rate input-buffer-info) n-channels)))
+  (overtone/free-all-loaded-samples))
 
 (defn -main
   "Main function"
