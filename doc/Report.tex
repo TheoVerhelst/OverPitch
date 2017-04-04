@@ -4,6 +4,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{amsmath}
+\usepackage{cases}
 \usepackage{amsfonts}
 
 \title{Pitch Scaling of Music Signals}
@@ -20,7 +21,9 @@ its playback speed intact. Pitch scaling is an important feature of many digital
 music tools, and needs to be done in real-time with the highest available
 quality. In this report, we describe succintly state-of-the-art techniques of
 pitch scaling, and we explain in detail one that is particularly suited to music
-signals. We also describe a Clojure implementation of this technique.
+signals. We also describe a Clojure implementation of this technique. This
+technique uses phase vocoder for time-scaling and 3rd order spline interpolation
+for resampling.
 \end{abstract}
 
 \section{Introduction}
@@ -41,53 +44,68 @@ resample the signal and playing it back at its original rate. But both pitch and
 speed are modified at the same time. Thus, we need a more sofisticated
 technique in order to preserve the playback speed constant.
 \paragraph{}
-In contrast to pitch scaling, time-scale modification (TSM) is process that
+In contrast to pitch scaling, time-scale modification (TSM) is a process that
 modifies the speed of a signal without modifying its pitch and its timbre.
 TSM has been subject to many more studies than pitch scaling, but we base our
 work on these studies, since it is possible to show that both processes are
 mathematically equivalent. Indeed, in order to change the pitch of a signal, one
 can use a well-known TSM method, and then resample the signal.
 
-\section{Time-scale modification techniques}
-TSM techniques can be grouped in two main categories: \emph{time-domain TSM} and
-\emph{frequency-domain TSM}.
-\paragraph{}
-Time-domain TSM (or TM-TSM) separates the input signal in short portions of
-time, and places them in the output signal by spacing them according to the
-scaling factor. This technique is particularly suited to monophonic, harmonic
-signal, as it preserves almost perfectly the timbre of the signal. But is can
-cause phase jumps artifacts on polyphonic signals, and transient
-doubling/skipping on non-harmonic signals.
-\paragraph{}
-Frequency-domain TSM is based on the short-time Fourier transform (STFT). Often,
-the technique also uses the \emph{phase vocoder}, and are thus named
-\emph{phase-vocoder time-scale modification}, or \emph{PV-TSM}. The idea is
-to preserve horizontal phase coherence across all frequencies, and not only on
-the most prominent frequency as in TM-TSM. PV-TSM behaves well on polyphonic
-signals, but are subject to vertical phase incoherence, i.e. the relationship
-between the phases of different frequencies in a point of time is not preserved,
-leading to audible artifacts, known as \emph{phasiness}.
-
-\section{Basics of pitch scaling}
-First, we have to define the basic concepts involved in pitch scaling. Let the
-function \(x:\mathbb{Z}\to\mathbb{R}\) be signal to pitch-scale. In practice,
-the analysed audio signal has a finite duration of \(L\in\mathbb{N}\) samples.
-Thus we define \(x(n)=0\,\forall n\in\mathbb{Z}\setminus[0,L[\) for the sake of
-simplicity.
-\paragraph{}
+\section{General procedure}
 Pitch scaling process is split in two steps: \begin{enumerate*}[label=\arabic*)]
 \item apply a TSM procedure \item resample the signal\end{enumerate*}. Let
 \(\alpha\) be the scaling factor. We first apply a TSM procedure with parameter
 \(1/\alpha\), so that the playback speed is modified, while the pitch is left
-unmodified. Then, we resample \(x(n)\) by a factor \(\alpha\), so that the
-pitch and the speed of \(x(n)\) are multiplied by \(\alpha\). As a result,
-the playback speed of the signal is the same as the original, while the pitch is
+unmodified. Then, we resample the signal by a factor \(\alpha\), so that the
+playback speed of the signal is the same as the original, but the pitch is
 multiplied by \(\alpha\).
-\subsection{Time-scale modification}
-Time-scale modification is based on the separation of the signal in successive
-\emph{frames}. \(x(n)\) is divised in \emph{analysis frames}
-\(x_m,\,m\in\mathbb{Z}\) having each a length of \(N\) samples, and these
-analysis frames are spaced by an \emph{analysis hopsize} \(H_a\):
+\paragraph{}
+For the TSM part, we use a simple phase vocoder with phase propagation. For the
+resampling part, we use an interpolator based on 3rd order splines. These are
+be explained below.
+
+\section{Time-scale modification techniques}
+TSM techniques can be grouped in two main categories: \emph{time-domain TSM} and
+\emph{frequency-domain TSM}.
+\paragraph{}
+Time-domain TSM separates the input signal in short portions of
+time, and places them in the output signal by spacing them according to the
+scaling factor. This technique is particularly suited to monophonic, harmonic
+signal, as it preserves almost perfectly the timbre of the signal. But it can
+cause phase jumps artifacts on polyphonic signals, since only the most prominent
+frequency is considered in the process. As a result, phase discontinuities can
+occur in less important frequencies, which is clearly audible. Furthermore,
+non-harmonic signals, such as drums or percussive instruments, have non-periodic
+patterns. These patterns are known as \emph{transients}. A typical time-domain
+TSM technique leads to transient doubling or skipping (according to the scaling
+factor), since these techniques periodically repeat or discard some small
+portions of the sound.
+\paragraph{}
+Frequency-domain TSM is based on the short-time Fourier transform (STFT). It
+splits the signal in small chunks, and computes the Fourier transform on each
+of these chunks, in order to get a frequency-domain representation of the
+signal. Often, the technique also uses the \emph{phase vocoder} in order to
+refine the frequencies estimates, and are thus named \emph{phase-vocoder
+time-scale modification}, or \emph{PV-TSM}. However, PV-TSM is often directly
+named phase vocoder. The idea is to preserve horizontal phase coherence across
+all frequencies, and not only on the most prominent frequency as in time-domain
+TSM, by exploiting the frequency-domain representation of the sound. PV-TSM
+behaves well on polyphonic signals, but are subject to vertical phase
+incoherence, i.e. the relationship between the phases of different frequencies
+at a point of time is not preserved, leading to audible artifacts, known as
+\emph{phasiness}, or \emph{loss of presence}.
+
+\section{Basics of time-scale modification}
+First, we have to define the basic concepts involved in time-scaling. Let the
+function \(x:\mathbb{Z}\to\mathbb{R}\) be signal to time-scale. In practice,
+the analysed audio signal has a finite duration of \(L\in\mathbb{N}\) samples.
+Thus we define \(x(n)=0\,\forall n\in\mathbb{Z}\setminus [0,L[ \) for the sake of
+simplicity.
+\paragraph{}
+Almost all TSM techniques are based on the following procedure: first, \(x(n)\)
+is divised in \emph{analysis frames} \(x_m,\,m\in\mathbb{Z}\) having each a
+length of \(N\) samples, and these analysis frames are spaced by an
+\emph{analysis hopsize} \(H_a\):
 \[x_m(n)=\begin{cases}
 	x(mH_a + n) & \text{if }n\in [-L/2, L/2[ \\
 	0           & \text{otherwise}
@@ -96,18 +114,17 @@ The next step is to construct \emph{synthesis frames} \(y_m\) from the analysis
 frames, and add these synthesis frames to the output signal \(y(n)\), spaced by
 the \emph{synthesis hopsize} \(H_s\):
 \[y(n) = \sum_{m\in\mathbb{Z}}y_m(n-mH_s)\]
-\(H_s\) is usually fixed to \(N/2\) or \(N/4\), in order to have a constant
+\(H_s\) is usually set to \(N/2\) or \(N/4\), in order to have a constant
 overlap between the synthesis frames. And since we know that
 \(\alpha=\frac{H_s}{H_a}\), we have \(H_a=\frac{H_s}{\alpha}\).
 \paragraph{}
-We can't add the analysis frame to the output signal directly because it would
-cause discontinuities and gain fluctuations at frame boundaries. Instead, we
-define a function \(f\) that will construct the synthesis frame \(y_m\) from the
-analysis frame \(x_m\):
-\[y_m(n)=f(m,\,n,\,x_m(n))\]
-The choice of this function \(f\) is critical, as it determines the quality of
-the result.
-\subsection{Resampling}
+We can't add the analysis frame \(x_m\) to the output signal directly because it
+would cause discontinuities and gain fluctuations at frame boundaries. This is
+why we rather derives the synthesis frames \(y_m\) from the analysis frames.
+The method used to transform \(x_m\) into \(y_m\) is
+critical, as it determines the quality of the result.
+
+\section{Resampling}
 The goal of resampling is to reconstruct a continuous-time signal from the given
 discrete-time samples, and then sample this signal again with another sampling
 rate. More formally, we want to construct the continuous-time signal
@@ -122,10 +139,56 @@ without expressing \(\hat x\) directly.
 \paragraph{}
 In order to construct the continuous-time signal, we need an interpolator. There
 exists various interpolators, such as truncated sinc, linear-interpolator,
-b-spline interpolator, Lagrange interpolator. We chose b-spline interpolator of
-order 3, for its simple implementation, although it gives not the best results
-for musical signal interpolation
-
+b-spline interpolator, Lagrange interpolator. We chose 3rd order spline
+interpolator, for its simple implementation, although it gives not the best
+results for musical signal interpolation.
+\paragraph{}
+For 3rd order spline interpolation, we search the factors of a 3rd-degree
+polynomial for each pair of consecutive signal values \((x(n),\,x(n+1))\), such
+that this polynomial passes through these values. For the sake of the notation,
+let
+\[y_0=x(n-1);\;y_1=x(n);\;y_2=x(n+1);\;y_3=x(n+2)\]
+We search a function
+\begin{equation}
+\label{interpolation_poly}
+f:[0, 1]\to\mathbb{R}:t\mapsto \sum_{i=0}^{3}\alpha_i t^i
+=\alpha_0+\alpha_1 t+\alpha_2t^2+\alpha_3t^3
+\end{equation}
+In order to determine the value of the factors \(\alpha_i\), we need to set four
+constraints on the function \(f\):
+\begin{numcases}{ }
+f(0)=y_1\label{constr1}\\
+f(1)=y_2\label{constr2}\\
+f'(0)=\frac{y_2-y_0}{2}\label{constr3} \\
+f'(1)=\frac{y_3-y_1}{2}\label{constr4}
+\end{numcases}
+\eqref{constr1} and \eqref{constr2} are natural constraints of spline interpolator:
+we want that the interpolating function passes through the supplied values
+\((x(n),\,x(n+1))\). But in order to determine the factors \(\alpha_i\), we need
+two more constraints. One solution is to use Hermitian splines, that is,
+the derivative of \(f\) at \(t\in\{0, 1\}\) is equal to the derivative of a
+straight line between the previous and the next point (\eqref{constr3} and
+\eqref{constr4}). By expressing the equations as a matrix equation,
+we can find that
+\begin{align*}
+\begin{bmatrix}
+	\alpha_0\\\alpha_1\\\alpha_2\\\alpha_3
+\end{bmatrix}
+&=
+\begin{bmatrix}
+	 1 &  0 &   0 &  0   \\
+	 0 &  0 & 0.5 &  0   \\
+	-3 &  3 &  -1 & -0.5 \\
+	 2 & -2 & 0.5 &  0.5 \\
+\end{bmatrix}
+\begin{bmatrix}
+	y_1\\y_2\\y_2-y_0\\y_3-y_1
+\end{bmatrix}
+\end{align*}
+For each pair of samples, we just have to compute the four factors \(\alpha_i\)
+with this equation, and then evaluate the function \(f\) as in
+\eqref{interpolation_poly}, at a value of \(t\) corresponding to the new
+sampling rate.
 \section{Clojure implementation}
 \subsection{The Clojure programming language}
 \subsection{Overtone}
