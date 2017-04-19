@@ -1,3 +1,4 @@
+# Leiningen stuff
 /target
 /classes
 /checkouts
@@ -9,4 +10,16 @@ pom.xml.asc
 /.nrepl-port
 .hgignore
 .hg/
+
+# Geany project
 *.geany
+
+# Testing wav files
+*.wav
+
+# Report output files
+doc/*.aux
+doc/*.bbl
+doc/*.blg
+doc/*.dvi
+doc/*.log
