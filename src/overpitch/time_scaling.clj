@@ -40,11 +40,11 @@
   coordinates. The numbers argument must be a map containing a vector or values
   labelled :real, and another vector of values labelled :imaginary."
   [numbers]
-  (let [real-parts (:real numbers) imaginary-parts (:imaginary number)
-        magnitudes (mapv #(Math/hypot (? 0) (? 1)) real-parts imaginary-parts)
+  (let [real-parts (:real numbers) imaginary-parts (:imaginary numbers)
+        magnitudes (mapv #(Math/hypot %1 %2) real-parts imaginary-parts)
         ; Watch out, atan2 takes y (the imaginary part) as first argument
-        phases (mapv #(Math/atan2 (? 1) (? 0)) real-parts imaginary-parts))
-    {:magnitudes magnitudes :phases phases})
+        phases (mapv #(Math/atan2 %2 %1) real-parts imaginary-parts)]
+    {:magnitudes magnitudes :phases phases}))
 
 (defn fft
   [frame]
