@@ -21,3 +21,13 @@
   (testing "Testing the hann window transformation on a frame"
     (is (almost-equal [0 0.5 1 0.5 0] (apply-hann-window [1 1 1 1 1])))
     (is (almost-equal [0 (- 0.5) -1 (- 0.5) 0] (apply-hann-window [-1 -1 -1 -1 -1])))))
+
+(deftest convert-rectangular-to-polar-test
+  (testing "Basic tests"
+    ; Make a template test to apply to multiple series of values
+    (are [magnitudes phases real imaginary]
+      (almost-equal
+        {:magnitudes magnitudes :phases phases}
+        (convert-rectangular-to-polar {:real real :imaginary imaginary}))
+      [0 1] [0 0] [0 1] [0 0]
+      [1] [Math/PI] [-1] [0])))

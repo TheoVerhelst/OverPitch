@@ -16,6 +16,9 @@
         v2* (into (vec (repeat (max 0 (- result-length (count v2))) 0)) v2)]
     (mapv + v1* v2*)))
 
+(defn clip
+  [signal]
+  (mapv #(max -1 (min 1 %)) signal))
 
 (defn merge-channels
   [channels-data]
@@ -35,6 +38,9 @@
   elements are respectively almost equals."
   [x y]
   (let [epsilon 0.0000001]
-    (if (sequential? x)
-      (every? true? (map almost-equal x y))
-      (< (math/abs (- x y)) epsilon))))
+    (cond
+      ; If we have two maps, compare respective values
+      (map? x)        (almost-equal (vals x) (vals y))
+      ; If we have two sequences, compare respective values
+      (sequential? x) (every? true? (map almost-equal x y))
+      :else           (< (math/abs (- x y)) epsilon))))
