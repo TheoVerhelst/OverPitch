@@ -24,7 +24,7 @@
     ; v[n] = v[n - 1] for past-the-end and before-the-beginning values.
     ; According to cubic splines, the last value should be -1.125, but
     ; we expect the resampling to clip the output.
-    (is (are-close [1 -0.125 -1 0 1 0 -1 0 1 0.125 -1 -1]
+    (is (almost-equal [1 -0.125 -1 0 1 0 -1 0 1 0.125 -1 -1]
            (resample [1 -1 1 -1 1 -1] 2))
         "Simple interpolation between 1s and -1s")
 

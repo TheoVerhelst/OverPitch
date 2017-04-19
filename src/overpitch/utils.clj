@@ -34,8 +34,9 @@
 
 (defn almost-equal
   "Checks whether the difference between x and y is less than epsilon. If x and
-  y are sequences, then compare each element recursively, and return true is all
-  elements are respectively almost equals."
+  y are sequences, then compares each element recursively, and returns true if
+  all elements are respectively almost equals. If x and y are maps, then applies
+  almost-equal on x's and y's values."
   [x y]
   (let [epsilon 0.0000001]
     (cond

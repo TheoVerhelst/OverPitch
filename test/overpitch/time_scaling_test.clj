@@ -30,4 +30,7 @@
         {:magnitudes magnitudes :phases phases}
         (convert-rectangular-to-polar {:real real :imaginary imaginary}))
       [0 1] [0 0] [0 1] [0 0]
-      [1] [Math/PI] [-1] [0])))
+      [1] [Math/PI] [-1] [0]
+      [1] [(- (/ Math/PI 4))] [(/ (Math/sqrt 2) 2)] [(/ (- (Math/sqrt 2)) 2)]
+      ; All at once
+      [0 1 1 1] [0 0 Math/PI (- (/ Math/PI 4))] [0 1 -1 (/ (Math/sqrt 2) 2)] [0 0  0 (/ (- (Math/sqrt 2)) 2)])))
