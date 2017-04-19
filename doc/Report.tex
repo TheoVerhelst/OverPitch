@@ -40,9 +40,9 @@ is probably in DJ software: one can change the pitch of a track, and therefore
 its key, in order to make the transition to the next track easier and smoother.
 \paragraph{}
 The most straightforward way to change the pitch of an audio signal is to
-resample the signal and playing it back at its original rate. But both pitch and
-speed are modified at the same time. Thus, we need a more sofisticated
-technique in order to preserve the playback speed constant.
+resample the signal and playing it back at its original rate \citep{DM}. But
+both pitch and speed are modified at the same time. Thus, we need a more
+sofisticated technique in order to preserve the playback speed constant.
 \paragraph{}
 In contrast to pitch scaling, time-scale modification (TSM) is a process that
 modifies the speed of a signal without modifying its pitch and its timbre.
@@ -123,6 +123,10 @@ would cause discontinuities and gain fluctuations at frame boundaries. This is
 why we rather derives the synthesis frames \(y_m\) from the analysis frames.
 The method used to transform \(x_m\) into \(y_m\) is
 critical, as it determines the quality of the result.
+\begin{figure*}
+\includegraphics[width=\textwidth]{pipeline.png}
+\caption{General procedure of time-scale modification.}
+\end{figure*}
 
 \section{Resampling}
 The goal of resampling is to reconstruct a continuous-time signal from the given
