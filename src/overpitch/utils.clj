@@ -31,11 +31,10 @@
 
 (defn almost-equal
   "Checks whether the difference between x and y is less than epsilon. If x and
-  y are sequences, then compare each element, and return true is all elements
-  are almost equals respectively to the other sequence."
+  y are sequences, then compare each element recursively, and return true is all
+  elements are respectively almost equals."
   [x y]
-  (let [epsilon 0.0000001
-        compare_ (fn [a b] (< (math/abs (- a b)) epsilon))]
+  (let [epsilon 0.0000001]
     (if (sequential? x)
-      (every? true? (map compare_ x y))
-      (compare_ x y))))
+      (every? true? (map almost-equal x y))
+      (< (math/abs (- x y)) epsilon))))
