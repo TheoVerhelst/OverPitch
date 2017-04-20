@@ -46,6 +46,14 @@
         phases (mapv #(Math/atan2 %2 %1) real-parts imaginary-parts)]
     {:magnitudes magnitudes :phases phases}))
 
+(defn convert-polar-to-rectangular
+  "Converts a map of numbers from real-imaginary coordinates to polar
+  coordinates."
+  [magnitudes phases]
+  (let [real (mapv #(* %1 (Math/cos %2)) magnitudes phases)
+        imaginary (mapv #(* %1 (Math/sin %2)) magnitudes phases)]
+    {:real real :imaginary imaginary}))
+
 (defn fft
   [frame]
   (let [result (double-array (* 2 frame-size) frame)]
@@ -59,7 +67,8 @@
 
 (defn ifft
   [magnitudes phases]
-  (let [result (double-array (utils/merge-channels [magnitudes phases]))]
+  (let [rectangular-bins (convert-polar-to-rectangular magnitudes phases)
+        result (double-array (utils/merge-channels [(:real rectangular-bins) (:imaginary rectangular-bins)]))]
     (.complexInverse jtransforms-fft-instance result false)
     (first (utils/split-channels result 2))))
 
