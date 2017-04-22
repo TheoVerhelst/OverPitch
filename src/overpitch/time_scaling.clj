@@ -39,37 +39,42 @@
   "Converts a map of numbers from real-imaginary coordinates to polar
   coordinates. The numbers argument must be a map containing a vector or values
   labelled :real, and another vector of values labelled :imaginary."
-  [numbers]
-  (let [real-parts (:real numbers) imaginary-parts (:imaginary numbers)
-        magnitudes (mapv #(Math/hypot %1 %2) real-parts imaginary-parts)
-        ; Watch out, atan2 takes y (the imaginary part) as first argument
-        phases (mapv #(Math/atan2 %2 %1) real-parts imaginary-parts)]
-    {:magnitudes magnitudes :phases phases}))
+  [real-parts imaginary-parts]
+  {:magnitudes (mapv #(Math/hypot %1 %2) real-parts imaginary-parts)
+   ; Watch out, atan2 takes y (the imaginary part) as first argument
+   :phases     (mapv #(Math/atan2 %2 %1) real-parts imaginary-parts)})
+
 
 (defn convert-polar-to-rectangular
   "Converts a map of numbers from real-imaginary coordinates to polar
   coordinates."
   [magnitudes phases]
-  (let [real (mapv #(* %1 (Math/cos %2)) magnitudes phases)
-        imaginary (mapv #(* %1 (Math/sin %2)) magnitudes phases)]
-    {:real real :imaginary imaginary}))
+  {:real      (mapv #(* %1 (Math/cos %2)) magnitudes phases)
+   :imaginary (mapv #(* %1 (Math/sin %2)) magnitudes phases)})
+
+(defn filter-zeros
+  "Replaces all numbers almost equal to zero by zero."
+  [numbers]
+  (mapv #(if (utils/almost-equal 0 %) 0 %) numbers))
 
 (defn fft
   [frame]
   (let [result (double-array (* 2 frame-size) frame)]
     ; call realForwardFull method on the jtransforms fft object, with result as
     ; argument. The array result will be overwritten by the method
-    (.realForwardFull jtransforms-fft-instance result)
-    ; Now result contains real and imaginary values, put it in a map and convert
-    ; it to polar coordinates
-    (convert-rectangular-to-polar
-      (zipmap [:real :imaginary] (utils/split-channels result 2)))))
+    (.realForward jtransforms-fft-instance result)
+    ; JTransforms puts Re[n/2] in result[1], we don't need that
+    (aset-double result 1 0)
+    ; Now result contains real and imaginary values, convert it to polar
+    ; coordinates in a map, by first filtering almost-zeros values. If we don't
+    ; filter these values, the phases will be garbaged
+    (apply convert-rectangular-to-polar (utils/split-channels (filter-zeros result) 2))))
 
 (defn ifft
   [magnitudes phases]
   (let [rectangular-bins (convert-polar-to-rectangular magnitudes phases)
         result (double-array (utils/merge-channels [(:real rectangular-bins) (:imaginary rectangular-bins)]))]
-    (.complexInverse jtransforms-fft-instance result false)
+    (.realInverse jtransforms-fft-instance result true)
     (first (utils/split-channels result 2))))
 
 (defn map-phase
@@ -101,7 +106,7 @@
   (let [length (count input-data)]
     (for [i     (range 0 length analysis-hopsize)
     :let [slice (subvec input-data i (min length (+ i frame-size)))]]
-      (apply-hann-window (into slice (repeat 0 (- frame-size length)))))))
+      (into slice (repeat 0 (- frame-size length))))))
 
 (defn overlap-and-add-frames
   [frames]
@@ -127,7 +132,7 @@
                 phases           (:phases (spectrums m))
                 next-phases      (if (< (inc m) (count frames)) (:phases (spectrums (inc m))) nil)
                 inst-frequencies (if (< (inc m) (count frames)) (phase-vocoder phases next-phases analysis-hoptime) nil)
-                mod-phases       (if (> 0 m)
+                mod-phases       (if (> m 0)
                                    (propagate-phase prev-inst-frequencies prev-mod-phases)
                                    ; If we are at m = 0, then the modified phase
                                    ; is set to the original phase
