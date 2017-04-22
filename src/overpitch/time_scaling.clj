@@ -83,16 +83,20 @@
   (- phase (math/ceil (- phase 0.5))))
 
 (defn phase-vocoder
-  [phases next-phases analysis-hoptime]
+  ; Overload taking time-frequencies as rough frequencies estimates
+  ([phases next-phases analysis-hoptime]
+    (phase-vocoder time-frequencies phases next-phases analysis-hoptime))
+  ; Overload taking with custom rough frequencies estimates, for unit tests
+  ([frequencies phases next-phases analysis-hoptime]
   (mapv
-    ; The next instantaneous frequency is the value of the k-th frequency
-    ; plus a small offset
-    #(let [frequency  (time-frequencies %)
-           phase      (phases %)
-           next-phase (next-phases %)
-           dt         analysis-hoptime]
-        (+ frequency (/ (map-phase (- next-phase phase (* frequency dt))) dt)))
-    (range frame-size)))
+    (fn [frequency phase next-phase]
+      ; The next instantaneous frequency is the value of the k-th frequency
+      ; plus a small offset
+      (+ frequency (/ (map-phase
+        (- next-phase phase (* frequency analysis-hoptime))) analysis-hoptime)))
+    frequencies
+    phases
+    next-phases)))
 
 (defn propagate-phases
   [inst-frequencies mod-phases]
