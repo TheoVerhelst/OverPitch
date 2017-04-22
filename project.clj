@@ -6,5 +6,8 @@
     [org.clojure/math.numeric-tower "0.0.4"]
     [net.mikera/core.matrix "0.57.0"]
     [net.sourceforge.jtransforms/jtransforms "2.4.0"]]
-  :main ^:skip-aot overpitch.core
-  :jvm-opts ^:replace [])
+  :main overpitch.core
+  :jvm-opts ["-Dcom.sun.management.jmxremote"
+             "-Dcom.sun.management.jmxremote.ssl=false"
+             "-Dcom.sun.management.jmxremote.authenticate=false"
+             "-Dcom.sun.management.jmxremote.port=43210"])
