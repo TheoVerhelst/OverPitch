@@ -87,16 +87,16 @@
   (mapv
     ; The next instantaneous frequency is the value of the k-th frequency
     ; plus a small offset
-    #(+ (time-frequencies %)
-      (/
-        (map-phase
-          (- (next-phases %) (phases %) (* (time-frequencies %) analysis-hoptime)))
-        analysis-hoptime))
+    #(let [frequency  (time-frequencies %)
+           phase      (phases %)
+           next-phase (next-phases %)
+           dt         analysis-hoptime]
+        (+ frequency (/ (map-phase (- next-phase phase (* frequency dt))) dt)))
     (range frame-size)))
 
 (defn propagate-phases
-  [frequencies phases]
-    (mapv #(+ (phases %) (* (frequencies %) synthesis-hoptime)) (range frame-size)))
+  [inst-frequencies mod-phases]
+    (mapv (fn [frequency phase] (+ phase (* frequency synthesis-hoptime))) inst-frequencies mod-phases))
 
 (defn split-in-frames
   [input-data analysis-hopsize]
@@ -126,14 +126,15 @@
              modified-frames       []]
         (if (< m (count frames))
           (let [magnitudes       (:magnitudes (spectrums m))
-                phases           (:phases (spectrums m))
-                next-phases      (if (< (inc m) (count frames)) (:phases (spectrums (inc m))) nil)
-                inst-frequencies (if (< (inc m) (count frames)) (phase-vocoder phases next-phases analysis-hoptime) nil)
+                phases           (mapv #(+ (/ % 2 Math/PI) 0.5) (:phases (spectrums m)))
+                next-phases      (mapv #(+ (/ % 2 Math/PI) 0.5) (:phases (get spectrums (inc m))))
+                ; If next-phases is not empty, compute the instantaneous frequencies
+                inst-frequencies (when (seq next-phases) (phase-vocoder phases next-phases analysis-hoptime))
                 mod-phases       (if (> m 0)
                                    (propagate-phases prev-inst-frequencies prev-mod-phases)
                                    ; If we are at m = 0, then the modified phase
                                    ; is set to the original phase
                                    phases)]
             (recur (inc m) inst-frequencies mod-phases
-              (conj modified-frames (apply-hann-window (ifft magnitudes mod-phases)))))
+              (conj modified-frames (apply-hann-window (ifft magnitudes (mapv #(* 2 Math/PI (- % 0.5)) mod-phases))))))
         modified-frames)))))
