@@ -74,16 +74,13 @@
   [magnitudes phases]
   (let [rectangular-bins (convert-polar-to-rectangular magnitudes phases)
         result (double-array (utils/merge-channels [(:real rectangular-bins) (:imaginary rectangular-bins)]))]
+    (aset-double result 1 0)
     (.realInverse jtransforms-fft-instance result true)
-    (first (utils/split-channels result 2))))
+    (vec result)))
 
 (defn map-phase
   [phase]
-  (loop [phase phase]
-    (cond
-      (< phase -0.5) (recur (inc phase))
-      (> phase 0.5)  (recur (dec phase))
-      :else          phase)))
+  (- phase (math/ceil (- phase 0.5))))
 
 (defn phase-vocoder
   [phases next-phases analysis-hoptime]
@@ -97,7 +94,7 @@
         analysis-hoptime))
     (range frame-size)))
 
-(defn propagate-phase
+(defn propagate-phases
   [frequencies phases]
     (mapv #(+ (phases %) (* (frequencies %) synthesis-hoptime)) (range frame-size)))
 
@@ -106,7 +103,7 @@
   (let [length (count input-data)]
     (for [i     (range 0 length analysis-hopsize)
     :let [slice (subvec input-data i (min length (+ i frame-size)))]]
-      (into slice (repeat 0 (- frame-size length))))))
+      (concat slice (repeat 0 (- frame-size (count slice)))))))
 
 (defn overlap-and-add-frames
   [frames]
@@ -133,7 +130,7 @@
                 next-phases      (if (< (inc m) (count frames)) (:phases (spectrums (inc m))) nil)
                 inst-frequencies (if (< (inc m) (count frames)) (phase-vocoder phases next-phases analysis-hoptime) nil)
                 mod-phases       (if (> m 0)
-                                   (propagate-phase prev-inst-frequencies prev-mod-phases)
+                                   (propagate-phases prev-inst-frequencies prev-mod-phases)
                                    ; If we are at m = 0, then the modified phase
                                    ; is set to the original phase
                                    phases)]

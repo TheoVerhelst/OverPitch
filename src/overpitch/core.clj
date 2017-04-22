@@ -32,4 +32,4 @@
   (let [args (vec args)]
     (time (transform-wav "orig.wav" "pitch-shifted.wav" pitch-shift 1.2))
     (time (transform-wav "orig.wav" "time-scaled.wav" time-scale 1.2))
-    (time (transform-wav "orig.wav" "resampled.wav" resample 1.2))))
+    (time (transform-wav "orig.wav" "resampled.wav" resample (/ 1 1.2)))))
