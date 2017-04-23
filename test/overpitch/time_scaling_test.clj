@@ -4,21 +4,25 @@
             [overpitch.utils :refer :all]))
 
 (deftest hann-window-test
-  (is (== 0 (hann-window (- 3.1))))
-  (is (== 0 (hann-window 0)))
-  (is (== 0 (hann-window 1)))
-  (is (== 0 (hann-window 2.3)))
-  (is (almost-equal 1 (hann-window 0.5)))
-  (is (almost-equal 0.5 (hann-window 0.25)))
-  (is (almost-equal 0.5 (hann-window 0.75)))
+  (are [input expected]
+    (almost-equal expected (hann-window input))
+    0 -3.1
+    0 0
+    0 1
+    0 2.3
+    1 0.5
+    0.5 0.25
+    0.5 0.75)
   (is (< 0 (hann-window 0.1) 0.5))
   (is (< 0 (hann-window 0.82) 0.5))
   (is (< 0.5 (hann-window 0.44) 1))
   (is (< 0.5 (hann-window 0.57) 1)))
 
 (deftest apply-hann-window-test
-  (is (almost-equal [0 0.5 1 0.5 0] (apply-hann-window [1 1 1 1 1])))
-  (is (almost-equal [0 (- 0.5) -1 (- 0.5) 0] (apply-hann-window [-1 -1 -1 -1 -1]))))
+  (are [input expected]
+    (almost-equal expected (apply-hann-window input))
+    [0 0.5 1 0.5 0] [1 1 1 1 1]
+    [0 (- 0.5) -1 (- 0.5) 0] [-1 -1 -1 -1 -1]
 
 (deftest complex-conversion-test
   ; Make a template test to apply to multiple series of values
@@ -26,10 +30,10 @@
     ; Test both directions of conversion
     (and
       (almost-equal
-        {:magnitudes magnitudes :phases phases}
+        [magnitudes phases]
         (rectangular-to-polar real-parts imaginary-parts))
       (almost-equal
-        {:real-parts real-parts :imaginary-parts imaginary-parts}
+        [real-parts imaginary-parts]
         (polar-to-rectangular magnitudes phases)))
     [0 1] [0 0] [0 1] [0 0]
     [1] [Math/PI] [-1] [0]
@@ -55,7 +59,7 @@
     ; with all the numbers in the range [0, frame-size[ and compare the result
     ; to the expected magnitudes and phases
     (almost-equal
-      {:magnitudes magnitudes :phases phases}
+      [magnitudes phases]
       (fft (mapv signal-function (range frame-size))))
     ; All zeros
     (generate-zeros-frame)
@@ -97,4 +101,10 @@
   (are [expected-frequencies frequencies phases next-phases analysis-hoptime]
     (almost-equal expected-frequencies (phase-vocoder frequencies phases next-phases analysis-hoptime))
       [1.3 1.3] [1 1] [0 0] [0.3 0.3] 1
-      [0.9 1.9] [1 2] [0 0] [0.9 0.9] 1))
+      [0.9 1.9] [1 2] [0 0] [0.9 0.9] 1
+      [96 149 102] [100 150 100] [0.4 0.1 0] [0 0 0.2] 0.1))
+
+(deftest propagate-phases-test
+  (are [expected-next-phases inst-frequencies mod-phases]
+    ))
+
