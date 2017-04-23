@@ -51,82 +51,121 @@ work on these studies, since it is possible to show that both processes are
 mathematically equivalent. Indeed, in order to change the pitch of a signal, one
 can use a well-known TSM method, and then resample the signal.
 
+\section{Time-scale modification techniques}
+TSM techniques can be grouped in two main categories: \emph{time-domain TSM} and
+\emph{frequency-domain TSM}.
+\paragraph{}
+Time-domain TSM extracts portions of the input signal at a frequency defined by
+the scaling factor, and places them in the output signal. This technique is
+particularly suited to monophonic, harmonic signal, as it preserves almost
+perfectly the timbre of the signal. The basic time-domain algorithm,
+\emph{overlap-and-add} (or \emph{OLA}), suffers from phase jumps artifacts, but there are many
+variations of this algorithm that avoid this effect. But all of them are only
+able to correct phase jumps on the most prominent frequency, i.e. the fundamental
+frequency of the signal. Phase jumps can still occur in less important frequencies,
+i.e. the harmonics, which is clearly audible. OLA-base algorithms are thus not
+suited to polyphonic signals, since they contains more harmonics than monophonic
+ones. Furthermore, non-harmonic signals, such as drums or percussive instruments, have non-periodic patterns. These patterns
+are known as \emph{transients}. A typical time-domain TSM technique leads to
+transient doubling or skipping (depending on the scaling factor), since these
+techniques periodically repeat or discard some small parts of the signal. This
+can be avoided by taking a very short frame size.
+\paragraph{}
+Frequency-domain TSM is based on the short-time Fourier transform (STFT). It
+splits the signal in small chunks, and computes the Fourier transform of each
+of these chunks, in order to get a discrete frequency-domain representation of the
+signal. Often, the technique also uses the \emph{phase vocoder} in order to
+refine the frequencies estimates, and are thus named \emph{phase-vocoder
+time-scale modification}, or \emph{PV-TSM}, or simply phase vocoder. The idea is
+to preserve phase continuity across all frequencies, and not only on the most
+prominent frequency as in time-domain TSM, by exploiting the frequency-domain
+representation of the sound. PV-TSM behaves well on polyphonic signals, but are
+subject to vertical phase incoherence, i.e. the relationship between the phases
+of different frequencies at a point of time is not preserved, leading to audible
+artifacts, known as \emph{phasiness}, or \emph{loss of presence}.
+
 \section{General procedure}
 Pitch scaling process is split in two steps: \begin{enumerate*}[label=\arabic*)]
 \item apply a TSM procedure \item resample the signal\end{enumerate*}. Let
 \(\alpha\) be the scaling factor. We first apply a TSM procedure with parameter
-\(1/\alpha\), so that the playback speed is modified, while the pitch is left
-unmodified. Then, we resample the signal by a factor \(\alpha\), so that the
+\(\alpha\), so that the playback speed is modified, while the pitch is left
+unmodified. Then, we resample the signal by a factor \(1/\alpha\), so that the
 playback speed of the signal is the same as the original, but the pitch is
 multiplied by \(\alpha\).
 \paragraph{}
 For the TSM part, we use a simple phase vocoder with phase propagation. For the
 resampling part, we use an interpolator based on 3rd order splines. These are
-be explained below.
+explained below.
 
-\section{Time-scale modification techniques}
-TSM techniques can be grouped in two main categories: \emph{time-domain TSM} and
-\emph{frequency-domain TSM}.
+\section{Time-scale modification}
+\subsection{Basics of time-scale modification}
+\paragraph{Notation:} Since range of integers are often used in this algorithm,
+let  \([a:b]:=\{a,a+1,\dots,b-1,b\}\) and \([a:b[:=\{a,a+1,\dots,b-1\}\)
+\(\forall a,b\in\mathbb{Z}:a<b\).
 \paragraph{}
-Time-domain TSM separates the input signal in short portions of
-time, and places them in the output signal by spacing them according to the
-scaling factor. This technique is particularly suited to monophonic, harmonic
-signal, as it preserves almost perfectly the timbre of the signal. But it can
-cause phase jumps artifacts on polyphonic signals, since only the most prominent
-frequency is considered in the process. As a result, phase discontinuities can
-occur in less important frequencies, which is clearly audible. Furthermore,
-non-harmonic signals, such as drums or percussive instruments, have non-periodic
-patterns. These patterns are known as \emph{transients}. A typical time-domain
-TSM technique leads to transient doubling or skipping (according to the scaling
-factor), since these techniques periodically repeat or discard some small
-portions of the sound.
-\paragraph{}
-Frequency-domain TSM is based on the short-time Fourier transform (STFT). It
-splits the signal in small chunks, and computes the Fourier transform on each
-of these chunks, in order to get a frequency-domain representation of the
-signal. Often, the technique also uses the \emph{phase vocoder} in order to
-refine the frequencies estimates, and are thus named \emph{phase-vocoder
-time-scale modification}, or \emph{PV-TSM}. However, PV-TSM is often directly
-named phase vocoder. The idea is to preserve horizontal phase coherence across
-all frequencies, and not only on the most prominent frequency as in time-domain
-TSM, by exploiting the frequency-domain representation of the sound. PV-TSM
-behaves well on polyphonic signals, but are subject to vertical phase
-incoherence, i.e. the relationship between the phases of different frequencies
-at a point of time is not preserved, leading to audible artifacts, known as
-\emph{phasiness}, or \emph{loss of presence}.
-
-\section{Basics of time-scale modification}
 First, we have to define the basic concepts involved in time-scaling. Let the
-function \(x:\mathbb{Z}\to\mathbb{R}\) be signal to time-scale. In practice,
+function \(x:\mathbb{Z}\to[-1, 1]\) be signal to time-scale. In practice,
 the analysed audio signal has a finite duration of \(L\in\mathbb{N}\) samples.
-Thus we define \(x(n)=0\,\forall n\in\mathbb{Z}\setminus [0,L[ \) for the sake of
-simplicity.
+Thus we define \(x(n)=0\,\forall n\in\mathbb{Z}\setminus [0:L[ \) for the sake
+of simplicity. We want to construct the output signal
+\(y:\mathbb{Z}\to[-1, 1]\) that have the same frequency-domain properties as
+\(x\), but being stretched in time by the factor \(\alpha\).
 \paragraph{}
-Almost all TSM techniques are based on the following procedure: first, \(x(n)\)
+Almost all TSM techniques are based on the following procedure: first, \(x\)
 is divised in \emph{analysis frames} \(x_m,\,m\in\mathbb{Z}\) having each a
 length of \(N\) samples, and these analysis frames are spaced by an
 \emph{analysis hopsize} \(H_a\):
 \[x_m(n)=\begin{cases}
-	x(mH_a + n) & \text{if }n\in [-L/2, L/2[ \\
+	x(mH_a + n) & \text{if }n\in [-N/2:N/2[ \\
 	0           & \text{otherwise}
 \end{cases}\]
-The next step is to construct \emph{synthesis frames} \(y_m\) from the analysis
-frames, and add these synthesis frames to the output signal \(y(n)\), spaced by
-the \emph{synthesis hopsize} \(H_s\):
+Then, we could want to put these frames in the output signal by spacing them by
+the synthesis hopsize \(H_s\), achieving the correct time-scale modification. But this
+would cause very audible phase discontinuities, since the end of a frame would
+no longer match with the beginning of the next frame. Thus, we need to modify
+the analysis frames \(x_m\) into \emph{synthesis frames} \(y_m\) before adding
+them to the output signal \(y(n)\):
 \[y(n) = \sum_{m\in\mathbb{Z}}y_m(n-mH_s)\]
+The method used to transform \(x_m\) into \(y_m\) is critical, as it determines
+the quality of the result. In addition to phase discontinuities, it must also
+compensate gain fluctuations: if no care is taken, two overlaping frames may have
+a higher gain in the overlaping part than in the rest of the signal.
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{pipeline.png}
+\caption{General procedure of time-scale modification.}
+\end{figure}
+\paragraph{}
 \(H_s\) is usually set to \(N/2\) or \(N/4\), in order to have a constant
 overlap between the synthesis frames. And since we know that
-\(\alpha=\frac{H_s}{H_a}\), we have \(H_a=\frac{H_s}{\alpha}\).
+\(\alpha=\frac{H_s}{H_a}\), we then have \(H_a=\frac{H_s}{\alpha}\).
 \paragraph{}
-We can't add the analysis frame \(x_m\) to the output signal directly because it
-would cause discontinuities and gain fluctuations at frame boundaries. This is
-why we rather derives the synthesis frames \(y_m\) from the analysis frames.
-The method used to transform \(x_m\) into \(y_m\) is
-critical, as it determines the quality of the result.
-\begin{figure*}
-\includegraphics[width=\textwidth]{pipeline.png}
-\caption{General procedure of time-scale modification.}
-\end{figure*}
+A common procedure to compensate gain fluctuations is to multiply each modified
+frame by a windowing function \(w:\mathbb{N}\to[0,1]\) before adding them to the
+output signal \(y\). The Hann window is widely used for this purpose, and is
+defined as
+\[w(n)=\begin{cases}
+  0.5(1-cos(\frac{2\pi (n + N/2)}{N-1}))\text{ if }n\in[-N/2:N/2[\\
+  0 \text{ otherwise}\end{cases}\]
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{hann.png}
+\caption{The Hann window function.}
+\end{figure}
+
+\subsection{Phase-vocoder time-scale modification}
+The phase vocoder is a common frequency-domain technique used to derive the
+\emph{synthesis frames} \(y_m\)  from the analysis frames \(x_m\). The idea
+is to compute the spectrum of the frame with the Fourier transform, and change
+the phases of this spectrum so that the signal resynthetised from this modified
+spectrum has no phase jump with the following and previous frames.
+\paragraph{}The spectrum of a signal is the frequency-domain representation of
+a time-domain signal, and is composed by the amplitudes and phases of the
+Fourier series decomposition of the signal. More precisely, the Fourier
+transform of the frame \(x_m\) is given by
+\[X(m,k) = \sum_{n=-N/2}^{N/2-1}x(n)w(n)\exp(-2\pi ikn/N)\]
+
+
+\subsection{Result and limitations}
+\subsection{Further improvements}
 
 \section{Resampling}
 The goal of resampling is to reconstruct a continuous-time signal from the given
@@ -166,8 +205,9 @@ f(1)=y_2\label{constr2}\\
 f'(0)=\frac{y_2-y_0}{2}\label{constr3} \\
 f'(1)=\frac{y_3-y_1}{2}\label{constr4}
 \end{numcases}
-\eqref{constr1} and \eqref{constr2} are natural constraints of spline interpolator:
-we want that the interpolating function passes through the supplied values
+\eqref{constr1} and \eqref{constr2} are natural constraints of spline
+interpolator: we want that the interpolating function passes through the
+supplied values
 \((x(n),\,x(n+1))\). But in order to determine the factors \(\alpha_i\), we need
 two more constraints. One solution is to use Hermitian splines, that is,
 the derivative of \(f\) at \(t\in\{0, 1\}\) is equal to the derivative of a
