@@ -35,7 +35,7 @@
         (fn [i x] (* (hann-window (/ i length)) x))
         frame))))
 
-(defn convert-rectangular-to-polar
+(defn rectangular-to-polar
   "Converts a map of numbers from real-imaginary coordinates to polar
   coordinates. The numbers argument must be a map containing a vector or values
   labelled :real, and another vector of values labelled :imaginary."
@@ -45,12 +45,23 @@
    :phases     (mapv #(Math/atan2 %2 %1) real-parts imaginary-parts)})
 
 
-(defn convert-polar-to-rectangular
+(defn polar-to-rectangular
   "Converts a map of numbers from real-imaginary coordinates to polar
   coordinates."
   [magnitudes phases]
   {:real      (mapv #(* %1 (Math/cos %2)) magnitudes phases)
    :imaginary (mapv #(* %1 (Math/sin %2)) magnitudes phases)})
+
+(defn phases-trigo-to-unit
+  [phases]
+    (vec (for [phase phases :let [scaled (/ phase 2 Math/PI)]]
+      ; scaled is in the range [-0.5, 0.5], map it to [0, 1]
+      (if (< scaled 0) (inc' scaled) scaled))))
+
+(defn phases-unit-to-trigo
+  [phases]
+    (vec (for [phase phases :let [mapped (if (> phase 0.5) (dec' phase) phase)]]
+      (* mapped 2 Math/PI))))
 
 (defn filter-zeros
   "Replaces all numbers almost equal to zero by zero."
@@ -67,12 +78,15 @@
     (aset-double result 1 0)
     ; Now result contains real and imaginary values, convert it to polar
     ; coordinates in a map, by first filtering almost-zeros values. If we don't
-    ; filter these values, the phases will be garbaged
-    (apply convert-rectangular-to-polar (utils/split-channels (filter-zeros result) 2))))
+    ; filter these values, the phases will be garbaged. Then, convert the pases
+    ; to the [0, 1] interval, as needed by the phase-vocoder algorithm.
+    (let [{:keys [magnitudes phases]} (apply rectangular-to-polar (utils/split-channels (filter-zeros result) 2))]
+      {:magnitudes magnitudes :phases (phases-trigo-to-unit phases)})))
 
 (defn ifft
   [magnitudes phases]
-  (let [rectangular-bins (convert-polar-to-rectangular magnitudes phases)
+  (let [phases (phases-unit-to-trigo phases)
+        rectangular-bins (polar-to-rectangular magnitudes phases)
         result (double-array (utils/merge-channels [(:real rectangular-bins) (:imaginary rectangular-bins)]))]
     (aset-double result 1 0)
     (.realInverse jtransforms-fft-instance result true)
@@ -130,8 +144,8 @@
              modified-frames       []]
         (if (< m (count frames))
           (let [magnitudes       (:magnitudes (spectrums m))
-                phases           (mapv #(+ (/ % 2 Math/PI) 0.5) (:phases (spectrums m)))
-                next-phases      (mapv #(+ (/ % 2 Math/PI) 0.5) (:phases (get spectrums (inc m))))
+                phases           (:phases (spectrums m))
+                next-phases      (:phases (get spectrums (inc m)))
                 ; If next-phases is not empty, compute the instantaneous frequencies
                 inst-frequencies (when (seq next-phases) (phase-vocoder phases next-phases analysis-hoptime))
                 mod-phases       (if (> m 0)
@@ -140,5 +154,5 @@
                                    ; is set to the original phase
                                    phases)]
             (recur (inc m) inst-frequencies mod-phases
-              (conj modified-frames (apply-hann-window (ifft magnitudes (mapv #(* 2 Math/PI (- % 0.5)) mod-phases))))))
+              (conj modified-frames (apply-hann-window (ifft magnitudes mod-phases)))))
         modified-frames)))))
