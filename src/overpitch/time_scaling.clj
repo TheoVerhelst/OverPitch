@@ -40,17 +40,17 @@
   coordinates. The numbers argument must be a map containing a vector or values
   labelled :real, and another vector of values labelled :imaginary."
   [real-parts imaginary-parts]
-  {:magnitudes (mapv #(Math/hypot %1 %2) real-parts imaginary-parts)
+  [(mapv #(Math/hypot %1 %2) real-parts imaginary-parts)
    ; Watch out, atan2 takes y (the imaginary part) as first argument
-   :phases     (mapv #(Math/atan2 %2 %1) real-parts imaginary-parts)})
+   (mapv #(Math/atan2 %2 %1) real-parts imaginary-parts)])
 
 
 (defn polar-to-rectangular
   "Converts a map of numbers from real-imaginary coordinates to polar
   coordinates."
   [magnitudes phases]
-  {:real      (mapv #(* %1 (Math/cos %2)) magnitudes phases)
-   :imaginary (mapv #(* %1 (Math/sin %2)) magnitudes phases)})
+  [(mapv #(* %1 (Math/cos %2)) magnitudes phases)
+   (mapv #(* %1 (Math/sin %2)) magnitudes phases)])
 
 (defn phases-trigo-to-unit
   [phases]
@@ -80,14 +80,13 @@
     ; coordinates in a map, by first filtering almost-zeros values. If we don't
     ; filter these values, the phases will be garbaged. Then, convert the pases
     ; to the [0, 1] interval, as needed by the phase-vocoder algorithm.
-    (let [{:keys [magnitudes phases]} (apply rectangular-to-polar (utils/split-channels (filter-zeros result) 2))]
-      {:magnitudes magnitudes :phases (phases-trigo-to-unit phases)})))
+    (let [[magnitudes phases] (apply rectangular-to-polar (utils/split-channels (filter-zeros result) 2))]
+      [magnitudes (phases-trigo-to-unit phases)])))
 
 (defn ifft
   [magnitudes phases]
-  (let [phases (phases-unit-to-trigo phases)
-        rectangular-bins (polar-to-rectangular magnitudes phases)
-        result (double-array (utils/merge-channels [(:real rectangular-bins) (:imaginary rectangular-bins)]))]
+  (let [rectangular-bins (polar-to-rectangular magnitudes (phases-unit-to-trigo phases))
+        result (double-array (utils/merge-channels rectangular-bins))]
     (aset-double result 1 0)
     (.realInverse jtransforms-fft-instance result true)
     (vec result)))
@@ -143,16 +142,17 @@
              prev-mod-phases       []
              modified-frames       []]
         (if (< m (count frames))
-          (let [magnitudes       (:magnitudes (spectrums m))
-                phases           (:phases (spectrums m))
-                next-phases      (:phases (get spectrums (inc m)))
-                ; If next-phases is not empty, compute the instantaneous frequencies
-                inst-frequencies (when (seq next-phases) (phase-vocoder phases next-phases analysis-hoptime))
-                mod-phases       (if (> m 0)
-                                   (propagate-phases prev-inst-frequencies prev-mod-phases)
-                                   ; If we are at m = 0, then the modified phase
-                                   ; is set to the original phase
-                                   phases)]
+          (let [[magnitudes phases] (spectrums m)
+                ; We don't need the previous magnitudes
+                [_ next-phases]     (get spectrums (inc m))
+                ; If there is a next frame, compute the instantaneous frequencies
+                inst-frequencies    (when (< (inc m) (count frames)) (phase-vocoder phases next-phases analysis-hoptime))
+                ; If there is a previous frame, propagate the phases from the previous ones
+                mod-phases          (if (> m 0)
+                                      (propagate-phases prev-inst-frequencies prev-mod-phases)
+                                      ; If we are at m = 0, then the modified phase
+                                      ; is set to the original phase
+                                      phases)]
             (recur (inc m) inst-frequencies mod-phases
               (conj modified-frames (apply-hann-window (ifft magnitudes mod-phases)))))
         modified-frames)))))
