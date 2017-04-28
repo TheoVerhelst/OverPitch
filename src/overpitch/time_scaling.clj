@@ -5,7 +5,7 @@
 
 ; Algorithm parameters
 (def frame-size 1024)
-(def synthesis-hopsize (/ frame-size 2))
+(def synthesis-hopsize (/ frame-size 4))
 (def sampling-rate 44100) ; TODO parametrize this
 (def synthesis-hoptime (/ synthesis-hopsize sampling-rate))
 (def time-frequencies (mapv #(/ (* % sampling-rate) frame-size) (range frame-size)))
@@ -95,22 +95,22 @@
   [phase]
   (- phase (math/ceil (- phase 0.5))))
 
-(defn phase-vocoder
-  ([phases next-phases analysis-hoptime]
+(defn instaneous-frequencies
+  ([phases prev-phases analysis-hoptime]
   "Overload taking time-frequencies as rough frequencies estimates"
-  (phase-vocoder time-frequencies phases next-phases analysis-hoptime))
+  (instaneous-frequencies time-frequencies phases prev-phases analysis-hoptime))
 
-  ([frequencies phases next-phases analysis-hoptime]
+  ([frequencies phases prev-phases analysis-hoptime]
   "Overload taking with custom rough frequencies estimates, for unit tests."
   (mapv
-    (fn [frequency phase next-phase]
+    (fn [frequency phase prev-phase]
       ; The next instantaneous frequency is the value of the k-th frequency
       ; plus a small offset
       (+ frequency (/ (map-phase
-        (- next-phase phase (* frequency analysis-hoptime))) analysis-hoptime)))
+        (- phase prev-phase (* frequency analysis-hoptime))) analysis-hoptime)))
     frequencies
     phases
-    next-phases)))
+    prev-phases)))
 
 (defn propagate-phases
   [inst-frequencies mod-phases]
@@ -139,21 +139,18 @@
         spectrums        (mapv fft frames)]
     (overlap-and-add-frames
       (loop [m                     0
-             prev-inst-frequencies []
              prev-mod-phases       []
              modified-frames       []]
         (if (< m (count frames))
           (let [[magnitudes phases] (spectrums m)
-                ; We don't need the previous magnitudes
-                [_ next-phases]     (get spectrums (inc m))
-                ; If there is a next frame, compute the instantaneous frequencies
-                inst-frequencies    (when (< (inc m) (count frames)) (phase-vocoder phases next-phases analysis-hoptime))
-                ; If there is a previous frame, propagate the phases from the previous ones
-                mod-phases          (if (> m 0)
-                                      (propagate-phases prev-inst-frequencies prev-mod-phases)
-                                      ; If we are at m = 0, then the modified phase
-                                      ; is set to the original phase
-                                      phases)]
-            (recur (inc m) inst-frequencies mod-phases
-              (conj modified-frames (apply-hann-window (ifft magnitudes mod-phases)))))
-        modified-frames)))))
+                mod-phases
+                  (if (= m 0)
+                    ; If there is no previous frame, use the normal phase as modified phase
+                    phases
+                    ; If there is a previous frame, propagate the phases from the previous ones
+                    (let [[_ prev-phases]     (spectrums (dec m))
+                          ; If there is a previous frame, compute the instantaneous frequencies
+                          inst-frequencies    (instaneous-frequencies phases prev-phases analysis-hoptime)]
+                      (propagate-phases inst-frequencies prev-mod-phases)))]
+                (recur (inc m) mod-phases (conj modified-frames (apply-hann-window (ifft magnitudes mod-phases))))))
+        modified-frames))))

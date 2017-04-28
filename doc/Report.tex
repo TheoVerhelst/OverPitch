@@ -117,8 +117,8 @@ is divided in \emph{analysis frames} \(x_m,\,m\in\mathbb{Z}\) having each a
 length of \(N\) samples, and these analysis frames are spaced by an
 \emph{analysis hop size} \(H_a\):
 \begin{equation}x_m(n)=\begin{cases}
-	x(mH_a + n) & \text{if }n\in [0:N[ \\
-	0           & \text{otherwise}
+		x(mH_a + n) & \text{if }n\in [0:N[ \\
+		0           & \text{otherwise}
 \end{cases}\end{equation}
 Then, we could want to put these frames in the output signal by spacing them by
 the synthesis hop size \(H_s\), achieving the correct time-scale modification. But this
@@ -126,7 +126,9 @@ would cause very audible phase discontinuities, since the end of a frame would
 no longer match with the beginning of the next frame. Thus, we need to modify
 the analysis frames \(x_m\) into \emph{synthesis frames} \(y_m\) before adding
 them to the output signal \(y(n)\):
-\begin{equation}y(n) = \sum_{m\in\mathbb{Z}}y_m(n-mH_s)\end{equation}
+\begin{equation}
+		y(n) = \sum_{m\in\mathbb{Z}}y_m(n-mH_s)
+\end{equation}
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{pipeline.png}
 \caption{General procedure of time-scale modification.}
@@ -142,14 +144,25 @@ compensate gain fluctuations: if no care is taken, two overlapping frames may
 have a higher gain in the overlapping part than in the rest of the signal.
 A common procedure to compensate gain fluctuations is to multiply each modified
 frame by a windowing function \(w:\mathbb{N}\to[0,1]\) before adding them to the
-output signal \(y\). The Hann window is widely used for this purpose, and is
-defined as
+output signal \(y\):
+\begin{equation}
+		\label{synthesis}
+		y(n) = \sum_{m\in\mathbb{Z}}w(n-mH_s)y_m(n-mH_s)
+\end{equation}
+ The Hann window is widely used for this purpose, and is defined as
 \begin{equation}
 \label{hann}
 w(n)=\begin{cases}
-  0.5(1-cos(\frac{2\pi n}{N-1}))\text{ if }n\in[0:N[\\
-  0 \text{ otherwise}\end{cases}
+	  0.5(1-cos(\frac{2\pi n}{N-1}))\text{ if }n\in[0:N[\\
+	  0 \text{ otherwise}\end{cases}
 \end{equation}
+The Hann window has the property that if we add Hann windows spaced by \(N/2\)
+in their domain, the sum of the overlapping parts we be equal to one:
+\begin{equation}
+		\forall n\in\mathbb{Z}\quad\sum_{i\in\mathbb{Z}}w(n + i\frac{N}{2}) = 1
+\end{equation}
+This property is essential to the equation \eqref{synthesis}: if not satisfied,
+the output signal may be multiplied by more than one in some places.
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{hann.png}
 \caption{The Hann window function.}
@@ -167,11 +180,17 @@ a time-domain signal, and is composed by the amplitudes and phases of the
 Fourier series decomposition of the signal. The Fourier transform of
 discrete-time signals is primarily defined for signals of length \(N\):
 \begin{equation}
-  X(k) = \sum_{n=0}^{N-1}x(n)\exp(-2\pi ikn/N)
+	  X(k) = \sum_{n=0}^{N-1}x(n)\exp(-2\pi ikn/N)
 \end{equation}
-where \(k\in [0:N[\) denotes the frequency index. This yields \(k\) complex
+where \(k\in [0:N[\) denotes the frequency index (see \eqref{frequency_index}). This yields \(k\) complex
 numbers, where \(|X(k)|\) is the magnitude of the \(k\)th frequency, and
-\(\arg(X(k))\in[0,1[\) is the phase of the \(k\)th frequency.
+\(\arg(X(k))\in[0,1[\) is the phase of the \(k\)th frequency. Note that we use
+phases in the unit range because we also manipulate frequencies in Hertz, and
+we don't want to divide the phase by \(2\pi\) each time we use it in an equation
+involving a frequency. Thus, we have
+\begin{equation}
+		X(k)= |X(k)|\exp(2\pi \text{i} \arg(X(k)))
+\end{equation}
 \paragraph{}
 As required by the time-scaling algorithm, we will apply the Fourier transform
 on small portions of the signal. We could want to do apply directly the
@@ -199,13 +218,14 @@ window as defined in \eqref{hann}
 \paragraph{}
 Note that the frequency index \(k\) corresponds to the physical frequency
 \begin{equation}
+		\label{frequency_index}
     F_{\text{coef}}(k) = \frac{F_s k}{N}
 \end{equation}
 and the frame index \(m\) corresponds to the physical time
 \begin{equation}
     T_{\text{coef}}(m) = \frac{H_a m}{F_s}
 \end{equation}
-\paragraph{Phase adjustment}
+\paragraph{Synthesis with modified frames}
 Our goal is to compute the synthesis frequency bins \(Y(m,k)\) from the analysis
 frequency bins \(X(m,k)\), so that the signal synthesised with the inverse
 Fourier transform from these synthesis frequency bins has no phase incoherence
@@ -214,6 +234,15 @@ we can already set
 \begin{equation}
     |Y(m,k)| = |X(m,k)|
 \end{equation}
+We also have to determine the phase \(\arg(Y(m,k))\), so that we can synthesise
+the synthesis frame \(y_m\) from the synthesis frequency bins \(Y(m,k)\) with
+the inverse Fourier transform:
+\begin{equation}
+		y_m(n)=\frac{1}{N}\sum_{k=0}^{N-1}Y(m,k)\exp(2\pi\text{i}kn/N)
+\end{equation}
+and then reconstruct the output signal with the equation \eqref{synthesis}.
+
+\paragraph{Instantaneous frequency}
 The phase adjustment involves the observation that the short-time Fourier
 transform yields coefficients for a finite quantity of frequencies, and that may
 be insufficient to characterise exactly the underlying sinusoids involved in the
@@ -265,6 +294,9 @@ the time \(T_{\text{coef}}(m+1)\).
     &=F_{\text{coef}}(k) + \frac{\phi^{\text{err}}_m}{\Delta t}\\
     &=F_{\text{coef}}(k) + \frac{\Psi(\phi_{m+1} - \phi_m - \phi^{\text{inc}})}{\Delta t}
 \end{align}
+
+\paragraph{Phase adjustment}
+
 \subsection{Result and limitations}
 \subsection{Further improvements}
 
