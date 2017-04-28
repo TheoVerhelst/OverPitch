@@ -226,16 +226,16 @@ and the frame index \(m\) corresponds to the physical time
     T_{\text{coef}}(m) = \frac{H_a m}{F_s}
 \end{equation}
 \paragraph{Synthesis with modified frames}
-Our goal is to compute the synthesis frequency bins \(Y(m,k)\) from the analysis
-frequency bins \(X(m,k)\), so that the signal synthesised with the inverse
-Fourier transform from these synthesis frequency bins has no phase incoherence
+Our goal is to compute the synthesis time-frequency bins \(Y(m,k)\) from the analysis
+time-frequency bins \(X(m,k)\), so that the signal synthesised with the inverse
+Fourier transform from these synthesis time-frequency bins has no phase incoherence
 from one frame to the next. Since we are only interested in phase adjustment,
 we can already set
 \begin{equation}
     |Y(m,k)| = |X(m,k)|
 \end{equation}
 We also have to determine the phase \(\arg(Y(m,k))\), so that we can synthesise
-the synthesis frame \(y_m\) from the synthesis frequency bins \(Y(m,k)\) with
+the synthesis frame \(y_m\) from the synthesis time-frequency bins \(Y(m,k)\) with
 the inverse Fourier transform:
 \begin{equation}
 		y_m(n)=\frac{1}{N}\sum_{k=0}^{N-1}Y(m,k)\exp(2\pi\text{i}kn/N)
@@ -253,16 +253,16 @@ frequency} and is denoted by \(F_{\text{coeff}}^{\text{IF}}(m,k)\).
 \paragraph{Notation:}
 Let \[\phi_m:=\arg(X(m,k))\]
 In order to find the instantaneous frequency, we first can observe that for
-any frequency bin \(X(m,k)\), we can compute its \emph{unwrapped phase advance},
+any time-frequency bin \(X(m,k)\), we can compute its \emph{unwrapped phase advance},
 that is, the phase increment that should occur from the time
 \(T_{\text{coef}}(m)\) to the time \(T_{\text{coef}}(m+1)\), according to the
 frequency estimate \(F_{\text{coef}}(k)\):
 \begin{equation}
-    \phi^{\text{inc}}=F_{\text{coef}}(k) \Delta t
+    \phi^{\text{inc}}=F_{\text{coef}}(k) \Delta t_a
 \end{equation}
-where \(\Delta t\) is analysis hop time given is seconds:
+where \(\Delta t_a\) is analysis hop time given is seconds:
 \begin{equation}
-    \Delta t=H_a/F_s
+    \Delta t_a=H_a/F_s
 \end{equation}
 Since we know the phase \(\phi_m\), we can compute the predicted phase at
 the time \(T_{\text{coef}}(m)\):
@@ -290,12 +290,22 @@ This sinusoid should have a phase of
 \(\phi_m\) at the time \(T_{\text{coef}}(m)\) and a phase \(\phi_{m+1}\) at
 the time \(T_{\text{coef}}(m+1)\).
 \begin{align}
-    &F_{\text{coeff}}^{\text{IF}}(m,k)=\frac{\phi^{\text{inc}} + \phi^{\text{err}}_m}{\Delta t}\\
-    &=F_{\text{coef}}(k) + \frac{\phi^{\text{err}}_m}{\Delta t}\\
-    &=F_{\text{coef}}(k) + \frac{\Psi(\phi_{m+1} - \phi_m - \phi^{\text{inc}})}{\Delta t}
+    &F_{\text{coeff}}^{\text{IF}}(m,k)=\frac{\phi^{\text{inc}} + \phi^{\text{err}}_m}{\Delta t_a}\\
+    &=F_{\text{coef}}(k) + \frac{\phi^{\text{err}}_m}{\Delta t_a}\\
+    &=F_{\text{coef}}(k) + \frac{\Psi(\phi_{m+1} - \phi_m - \phi^{\text{inc}})}{\Delta t_a}
 \end{align}
 
 \paragraph{Phase adjustment}
+Now that we have refined the coarse frequency estimates of the STFT, we can use
+this information to adjust the phase of the time-frequency bins. The idea is
+to set the phase of the bin according to the phase and the instantaneous frequency
+of corresponding bin in the previous frame:
+\begin{equation}
+		\arg(Y(m,k))=\arg(Y(m-1,k)) + F_{\text{coeff}}^{\text{IF}}(m-1,k)\Delta t_s
+\end{equation}
+We now use the synthesis hop time in
+the following equations since we are synthesising the output frames, and they
+are spaced by the synthesis hoptime \(\Delta t_s=H_s/F_s\).
 
 \subsection{Result and limitations}
 \subsection{Further improvements}
