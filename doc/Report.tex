@@ -76,7 +76,8 @@ or percussive instruments, have non-periodic patterns. These patterns are known
 as \emph{transients}. A typical time-domain TSM technique leads to transient
 doubling or skipping (depending on the scaling factor), since these techniques
 periodically repeat or discard some small parts of the signal. This can be
-avoided by taking a very short frame size.
+reduced by taking a very short frame size, or managing separately the transients
+after a transient detection procedure \citep{Grofit2008}.
 
 \paragraph{} Frequency-domain TSM is based on the short-time Fourier transform
 (STFT). It splits the signal in small chunks, and computes the Fourier transform
@@ -192,7 +193,8 @@ spectrum has no phase jump with the following and previous frames.
 The spectrum of a signal is the frequency-domain representation of
 a time-domain signal, and is composed by the amplitudes and phases of the
 Fourier series decomposition of the signal. The Fourier transform of
-discrete-time signals is primarily defined for signals of length \(N\):
+discrete-time signals is primarily defined for signals of length \(N\)
+\citep{bracewell1986fourier}:
 \begin{equation}
 	  X(k) = \sum_{n=0}^{N-1}x(n)\exp(-2\pi ikn/N)
 \end{equation}
@@ -223,7 +225,8 @@ i.e. as if we where computing the Fourier series of a signal
 which can have high amplitude in high frequencies around
 \(n=aN\;\forall a\in\mathbb{Z}\).
 A solution is to apply a windowing function to the analysis frame, so that the
-signal is always zero at the frame boundaries:
+signal is always zero at the frame boundaries
+\citep{gabor1946theory}:
 \begin{equation}
     X(m,k) = \sum_{n=0}^{N-1}x_m(n)w(n)\exp(-2\pi ikn/N)
 \end{equation}
@@ -246,8 +249,8 @@ and the frame index \(m\) corresponds to the physical time
 \paragraph{Synthesis with modified frames}
 Our goal is to compute the synthesis time-frequency bins \(Y(m,k)\) from the
 analysis time-frequency bins \(X(m,k)\), so that the signal synthesised with the
-inverse Fourier transform from these synthesis time-frequency bins has no phase
-incoherence from one frame to the next. Since we are only interested in phase
+inverse Fourier transform from these synthesis time-frequency bins has phase
+coherence from one frame to the next. Since we are only interested in phase
 adjustment, we can already set
 \begin{equation}
     |Y(m,k)| = |X(m,k)|
@@ -326,7 +329,24 @@ the following equations since we are synthesising the output frames, and they
 are spaced by the synthesis hoptime \(\Delta t_s=H_s/F_s\).
 
 \subsection{Result and limitations}
+Thanks to the phase modification procedure, the phase continuity is guaranteed
+in successive frames, and allows efficient time-scaling of a polyphonic musical
+signal. This phase phase continuity in time is called horizontal phase
+coherence. But the phase relationship between the frequency channels in one
+frame is no longer respected. This relationship is called vertical phase
+coherence. This leads to phasiness, and the resulting sound is characteristic of
+phase-vocoder techniques \citep{Laroche1999}. Another effect is transient
+smearing: in musical signals with percussions, such as drums, the percussive
+aspect of the sound results of the subtle and sudden tuning of the phases of
+various sinusoids in the signal. And because of the lack of vertical phase
+coherence, the percussive aspect of transients is significantly reduced.
+
+\paragraph{}
+
 \subsection{Further improvements}
+Many improvements has been proposed to the standard phase-vocoder procedure,
+mainly to reduce the phasiness and transient smearing of the result. On of
+them is 
 
 \section{Resampling}
 The goal of resampling is to reconstruct a continuous-time signal from the given
