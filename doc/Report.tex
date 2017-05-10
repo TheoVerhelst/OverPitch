@@ -4,13 +4,25 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{amsmath}
-\usepackage{cases}
 \usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{cases}
+\usepackage{color}
+\newcommand*{\codeinl}{\texttt}
+\newcommand{\TODO}[1]{\textcolor{red}{\textbf{\textit{\huge #1}}}}
+
+\theoremstyle{definition}
+\newtheorem*{definition}{Definition}
+\newtheorem*{notation}{Notation}
+\theoremstyle{remark}
+\newtheorem*{note}{Note}
+\newtheorem*{example}{Example}
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
 
 \title{Pitch Scaling of Music Signals}
-\author{Théo Verhelst \\
-Université Libre de Bruxelles}
-
+\author{Théo Verhelst \\ Université Libre de Bruxelles}
 
 \begin{document}
 \maketitle
@@ -94,6 +106,7 @@ not preserved, leading to audible artifacts, known as \emph{phasiness}, or
 \emph{loss of presence}.
 
 \section{General procedure}
+\label{sec:procedure}
 Pitch scaling process is split in two steps: \begin{enumerate*}[label=\arabic*)]
 \item apply a TSM procedure \item resample the signal\end{enumerate*}. Let
 \(\alpha\) be the scaling factor. We first apply a TSM procedure with parameter
@@ -109,10 +122,12 @@ explained below.
 
 \section{Time-scale modification}
 \subsection{Basics of time-scale modification}
-\paragraph{Notation:} Let
-\[[a:b]:=\{a,a+1,\dots,b-1,b\}\quad\forall a,b\in\mathbb{Z}:a<b\]
-and
-\[[a:b[\;:=\{a,a+1,\dots,b-1\}\quad\forall a,b\in\mathbb{Z}:a<b\]
+\begin{notation}
+	Let
+	\[[a:b]:=\{a,a+1,\dots,b-1,b\}\quad\forall a,b\in\mathbb{Z}:a<b\]
+	and
+	\[[a:b[\;:=\{a,a+1,\dots,b-1\}\quad\forall a,b\in\mathbb{Z}:a<b\]
+\end{notation}
 
 \paragraph{}
 First, we have to define the basic concepts involved in time-scaling. Let the
@@ -225,8 +240,7 @@ i.e. as if we where computing the Fourier series of a signal
 which can have high amplitude in high frequencies around
 \(n=aN\;\forall a\in\mathbb{Z}\).
 A solution is to apply a windowing function to the analysis frame, so that the
-signal is always zero at the frame boundaries
-\citep{gabor1946theory}:
+signal is always zero at the frame boundaries \citep{gabor1946theory}:
 \begin{equation}
     X(m,k) = \sum_{n=0}^{N-1}x_m(n)w(n)\exp(-2\pi ikn/N)
 \end{equation}
@@ -256,13 +270,20 @@ adjustment, we can already set
     |Y(m,k)| = |X(m,k)|
 \end{equation}
 We also have to determine the phase \(\arg(Y(m,k))\), so that we can synthesise
-the synthesis frame \(y_m\) from the synthesis time-frequency bins \(Y(m,k)\)
-with the inverse Fourier transform:
+the synthesis frame \(y_m\) from the synthesis time-frequency bins \(Y(m,k)\).
+Note that the modified STFT may not be invertible, i.e. there may be no signal
+\(y\) whose STFT is \(Y(m,k)\). However, there is a procedure described in
+\citep{signalEstim} that minimizes the squared error between \(Y(m,k)\) and the
+STFT of the resulting signal. It results that the synthesis frame \(y_m\) is
+given by:
 \begin{equation}
+		\label{modified_synth}
 		y_m(n)=\frac{1}{N}\sum_{k=0}^{N-1}Y(m,k)\exp(2\pi\text{i}kn/N)
 \end{equation}
-and then reconstruct the output signal with the equation \eqref{synthesis}.
+We can then reconstruct the output signal \(y\) with the equation
+\eqref{synthesis}.
 
+\TODO{Insert graphic on inst frequency here}
 \paragraph{Instantaneous frequency}
 The phase adjustment involves the observation that the short-time Fourier
 transform yields coefficients for a finite quantity of frequencies, and that may
@@ -271,8 +292,10 @@ Fourier series decomposition of the signal. However, it is possible to refine
 the frequency of the \(k\)th frequency index by using the phases of the current
 and next frame. This refined frequency is called the \emph{instantaneous
 frequency} and is denoted by \(F_{\text{coeff}}^{\text{IF}}(m,k)\).
-\paragraph{Notation:}
+\begin{notation}
 Let \[\phi_m:=\arg(X(m,k))\]
+and \[\gamma_m:=\arg(Y(m,k))\]
+\end{notation}
 In order to find the instantaneous frequency, we first can observe that for any
 time-frequency bin \(X(m,k)\), we can compute its \emph{unwrapped phase
 advance}, that is, the phase increment that should occur from the time
@@ -296,7 +319,7 @@ We can then compute the difference with the effective phase \(\phi_{m+1}\), and
 this difference is called the \emph{phase error} (or \emph{heterodyned phase
 increment}):
 \begin{equation}
-    \phi^{\text{err}}=\Psi(\phi_{m+1} - \phi^{\text{pred}}_m)
+    \phi^{\text{err}}_m=\Psi(\phi_{m+1} - \phi^{\text{pred}}_m)
 \end{equation}
 where the function \(\Psi\) is the \emph{principal argument function} that maps
 the phase difference to the range \([-0.5, 0.5]\).
@@ -322,11 +345,24 @@ this information to adjust the phase of the time-frequency bins. The idea is to
 set the phase of the bin according to the phase and the instantaneous frequency
 of corresponding bin in the previous frame:
 \begin{equation}
-		\arg(Y(m,k))=\arg(Y(m-1,k)) + F_{\text{coeff}}^{\text{IF}}(m-1,k)\Delta t_s
+		\gamma_m=\gamma_{m-1} + F_{\text{coeff}}^{\text{IF}}(m-1,k)\Delta t_s
 \end{equation}
-We now use the synthesis hop time in
-the following equations since we are synthesising the output frames, and they
-are spaced by the synthesis hoptime \(\Delta t_s=H_s/F_s\).
+We now use the synthesis hop time since we are synthesising the output frames,
+and they are spaced by the synthesis hoptime \(\Delta t_s=H_s/F_s\).
+
+\paragraph{}
+This formula recursively defines the modified frame from the previous modified
+frame and a refined frequency estimate of the underlying sinusoid. Thus, we
+need an initial step for the first frame. In practice, we do not change the
+phases of the first frame, since there is no phase discontinuity with the
+previous frame:
+\begin{equation}
+	\label{initial_phase}
+	\gamma_0=\phi_0
+\end{equation}
+Now that we have a synthesis time-frequency bin for the whole signal, we can
+use the equation \eqref{modified_synth} to construct the synthesis frames, and
+then equation \eqref{synthesis} to synthesise the final output signal.
 
 \subsection{Result and limitations}
 Thanks to the phase modification procedure, the phase continuity is guaranteed
@@ -345,8 +381,28 @@ coherence, the percussive aspect of transients is significantly reduced.
 
 \subsection{Further improvements}
 Many improvements has been proposed to the standard phase-vocoder procedure,
-mainly to reduce the phasiness and transient smearing of the result. On of
-them is 
+mainly to reduce the phasiness and transient smearing of the result. One of
+them \citep{Dorran_audiotime_scale, Kraft2012ImprovedPT}, is based on the
+observation that the phasiness increases over time from the time where the
+modified phase is set as the initial input phase (see \eqref{initial_phase}).
+Thus, by placing periodically in the output signal an analysis frame unchanged,
+the vertical phase coherence is reset before it degenerates too much. The
+unmodified frame is placed in the signal with usual time-domain procedure,
+such as \emph{Waveform Similarity Overlapp and Add} (\emph{WSOLA})
+\citep{Verhelst1993}.
+
+\paragraph{}
+Another well-known improvement of the standard phase-vocoder has been proposed
+by J. Laroche and M. Dolson \citep{Laroche1999}. It is based on the observation
+that the phase of a sinusoid is mainly tied to the phase of the nearest peak
+in the spectrum. Although phase inconstency between a very low-frequency
+sinusoid and a high-pitched one is barely noticeable, a high-amplitude sinusoid
+influences the phase of nearby frequency channels. Garbaging this latter
+relation results in audible phasiness. The idea of this improved phase-vocoder
+is to lock the phase of all frequency channels to the one of the neared peak
+in the spectrum. As a result, the vertical phase incoherence is greatly reduced.
+Furthemore, the computational cost of the phase-vocoder is also reduced since
+the phase propagation has to be computed only for the peak frequencies.
 
 \section{Resampling}
 The goal of resampling is to reconstruct a continuous-time signal from the given
@@ -359,7 +415,7 @@ where \(T\) is the sampling period (the inverse of the sampling rate). Then, we
 sample a new signal \(y\) at a sampling period \(T'\):
 \begin{equation*}y(n) = \hat x(T'n) \;\forall n\in\mathbb{Z}\end{equation*}
 
-\paragraph{}
+\subsection{Procedure}
 In order to construct the continuous-time signal, we need an interpolator. There
 exists various interpolators, such as truncated sinc
 \citep{duncan1988fundamentals, rossum1989an}, linear-interpolator
@@ -370,11 +426,13 @@ interpolator, for its simple implementation \citep{Grisoni97anhermitian}.
 \paragraph{}
 For 3rd order spline interpolation, we search the factors of a 3rd-degree
 polynomial for each pair of consecutive signal values \((x(n),\,x(n+1))\), such
-that this polynomial passes through these values. For the sake of the notation,
-let
-\begin{equation*}
-y_0=x(n-1);\;y_1=x(n);\;y_2=x(n+1);\;y_3=x(n+2)
-\end{equation*}
+that this polynomial passes through these values.
+\begin{notation}
+	Let
+	\begin{equation*}
+	y_0=x(n-1);\;y_1=x(n);\;y_2=x(n+1);\;y_3=x(n+2)
+	\end{equation*}
+\end{notation}
 We search a function
 \begin{equation}
 \label{interpolation_poly}
@@ -417,17 +475,102 @@ For each pair of samples, we just have to compute the four factors \(\alpha_i\)
 with this equation, and then evaluate the function \(f\) as in
 \eqref{interpolation_poly}, at a value of \(t\) corresponding to the new
 sampling rate.
-\section{Clojure implementation}
+
+\subsection{Results and limitations}
+By following the described resampling procedure, one can achieve fairly good
+results. Only informal tests have been done, but no audible artifact has been
+noticed, and the result is close to what one would expect from any resampling
+algorithm.
+
+\paragraph{}
+Although the input signal has the domain \([-1,1]\), this resampling technique
+does not guarantee that the resampled signal will also fit in this range. For
+example, if we have
+\(y=\begin{bmatrix}1&-1&-1&1\end{bmatrix}^T\), it follows
+that we have the factor vector
+\(\begin{bmatrix}-1&-1&1&0\end{bmatrix}^T\), which results
+in the function \(f:t\mapsto -1-t+t^2\). If we evaluate this function at
+\(t=0.5\), we have \(f(0.5)=-1.25\).  This may result in gain fluctuation, or
+even in distortion or clipping of the signal, which is clearly not ideal.
+
+\section{Implementation}
+
+\subsection{Functionnal programming}
+Although the main objective of this thesis is to accomplish a research work on a
+scientific subject, another one is to discover the functionnal paradigm for
+programming languages, and the functionnal language \emph{Clojure}. Functionnal
+programming constrasts with the widely-used imperative paradigm. It is aimed to
+build stronger softwares, based on the concept of \emph{pure function}. A
+functions is said to be pure if it is free of any noticeable side-effect, and if
+it always returns the same result for a given set of arguments. Common
+mathematical functions, such as \(\sin\), are typical examples of pure function,
+whereas the usual \codeinl{print} function is not, since it outputs characters
+to some output device.
+
+\paragraph{}
+Functionnal purity improves reliability of software by ensuring that when a pure
+function is called, all the consequences of this call are known by just looking
+at the caller code. Obviously, not all function are suited to be pure. But the
+more the code is functionnaly pure, the more the software is side-effect free,
+and consequently less bug-prone.
+
 \subsection{The Clojure programming language}
-\subsection{Overtone}
+Clojure is based on the \emph{Lisp} programming language, which dates back to
+1958. Like Lisp, it offers fully-parenthesised syntax, and is based on the
+\emph{Lambda calculus} \citep{Rojas_atutorial}.
+
+\paragraph{}
+In order to manipulate audio data in Clojure, the music library \emph{Overtone}
+is used. It allows a very large range of features for music manipulation and
+generation, through the use of \emph{generators}. A generator is a function
+object that can be used to generate sound, or to control the value of a
+parameter over the time. A generator can also be parametrized by other
+generator, allowing a great flexibility and creativity in its design.
+
+\paragraph{}
+The goal of the implementation in Clojure is to show the various concepts
+elabored earlier, in the light of the functional programming paradigm. As a
+result, we used a very small portion of the Overtone library, mainly the WAV
+file read and write procedures. We could have implemented the phase vocoder in a
+few lines only with Overtone, but the juicy part of the algorithm would have
+been hidden behind a library function call. We then choosen to mainly use the
+built-in features of the Clojure language, in order to make the whole procedure
+explicit.
+
 \subsection{Implementation of pitch scaling}
+The pitch-shifting implementation is split in three main parts, each having its
+own namespace: the time-scaling algorithm in the namespace
+\codeinl{time-scaling} , the resampling algorithm in the namespace
+\codeinl{resampling}, and the pitch-shifting algorithm in the namespace
+\codeinl{pitch-shifting}. The latter uses the two former, as discussed in the
+general procedure section. The front-end of the library is the namespace
+\codeinl{core}, which contains the \codeinl{-main} function. This function
+parses the command-line arguments and apply the pitch-shifting algorithm.
+
+\paragraph{}
+Each algorithm is clearly separated from the others, achieving a good code
+independance. This enables an interesting feature for this library: because the
+resampling is separated from the time-scaling, we could use two different
+parameters for both algorithm. This allows us to change the pitch and the
+duration of the audio signal at the same time, without any additional
+computational cost. Given that one of the goal of this library is to provide a
+convenient tool for DJing set preparation, this allows the user to change the
+tempo and the key of a music file in only one operation, in order to make a
+smooth transition with another music file.
 
 \section{Results}
+
 \section{Conclusion}
+We presented state-of-the-art pitch-shifting procedure suited to music signals,
+based on the standard phase-vocoder technique and on resampling with 3rd-order
+spline interpolation. This lead to fairly good results, although there is still
+room for improvement, both on quality and on efficiency. We then briefly
+introduced the functionnal programming paradigm, as well as the Clojure
+programming language. Finally, we described our implementation of the
+pitch-shifting algorithm in Clojure.
 
 \footnotesize
 \bibliographystyle{apalike}
 \bibliography{Report}
-
 
 \end{document}
