@@ -7,6 +7,7 @@
 \usepackage{amsfonts}
 \usepackage{amsthm}
 \usepackage{cases}
+\usepackage[inline]{enumitem}
 \usepackage{color}
 \newcommand*{\codeinl}{\texttt}
 \newcommand{\TODO}[1]{\textcolor{red}{\textbf{\textit{\huge #1}}}}
@@ -255,7 +256,8 @@ Note that the frequency index \(k\) corresponds to the physical frequency
 		\label{frequency_index}
     F_{\text{coef}}(k) = \frac{F_s k}{N}
 \end{equation}
-and the frame index \(m\) corresponds to the physical time
+where \(F_s\) is the sampling rate in Hz, and the frame index \(m\) corresponds
+to the physical time
 \begin{equation}
     T_{\text{coef}}(m) = \frac{H_a m}{F_s}
 \end{equation}
@@ -283,7 +285,20 @@ given by:
 We can then reconstruct the output signal \(y\) with the equation
 \eqref{synthesis}.
 
-\TODO{Insert graphic on inst frequency here}
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{phase-vocoder.png}
+\caption{The phase-vocoder procedure.
+\begin{enumerate*}[label={(\alph*)}]
+  \item The input signal is analysed and its STFT is calculated;
+  \item The previous modified time-frequency bin is compared with the current
+    unmodified time-frequency bin;
+  \item The phase of the previous time-frequency bin is used to adjust the phase
+    of the current one;
+  \item The modified time-frequency bins are converted back into time-domain and
+    overlapped.
+\end{enumerate*}}
+\end{figure}
+
 \paragraph{Instantaneous frequency}
 The phase adjustment involves the observation that the short-time Fourier
 transform yields coefficients for a finite quantity of frequencies, and that may
@@ -309,9 +324,9 @@ where \(\Delta t_a\) is analysis hop time given is seconds:
     \Delta t_a=H_a/F_s
 \end{equation}
 Since we know the phase \(\phi_m\), we can compute the predicted phase at
-the time \(T_{\text{coef}}(m)\):
+the time \(T_{\text{coef}}(m+1)\):
 \begin{equation}
-    \phi^{\text{pred}}_m=\phi_m + \phi^{\text{inc}}
+    \phi^{\text{pred}}_{m+1}=\phi_m + \phi^{\text{inc}}
 \end{equation}
 But because of the lack of precision of the phase vocoder, this predicted phase
 may not be equal to \(\phi_{m+1}\) when mapped in the range \([0, 1[\).
@@ -319,7 +334,7 @@ We can then compute the difference with the effective phase \(\phi_{m+1}\), and
 this difference is called the \emph{phase error} (or \emph{heterodyned phase
 increment}):
 \begin{equation}
-    \phi^{\text{err}}_m=\Psi(\phi_{m+1} - \phi^{\text{pred}}_m)
+    \phi^{\text{err}}_m=\Psi(\phi_{m+1} - \phi^{\text{pred}}_{m+1})
 \end{equation}
 where the function \(\Psi\) is the \emph{principal argument function} that maps
 the phase difference to the range \([-0.5, 0.5]\).
@@ -363,6 +378,14 @@ previous frame:
 Now that we have a synthesis time-frequency bin for the whole signal, we can
 use the equation \eqref{modified_synth} to construct the synthesis frames, and
 then equation \eqref{synthesis} to synthesise the final output signal.
+
+\begin{figure}
+\includegraphics[width=\linewidth]{phase-unwrapping.png}
+\caption{The phase adjustement procedure. The difference between the predicted
+phase at \(t_2\) (\(\phi^{\text{pred}}_{m+1}\)) and the effective phase given by
+the STFT (\(\phi_{m+1}\)) is used to refine the coarse frequency estimate (in
+red) to the instantaneous frequency (in grey).}
+\end{figure}
 
 \subsection{Result and limitations}
 Thanks to the phase modification procedure, the phase continuity is guaranteed
@@ -515,9 +538,9 @@ more the code is functionnaly pure, the more the software is side-effect free,
 and consequently less bug-prone.
 
 \subsection{The Clojure programming language}
-Clojure is based on the \emph{Lisp} programming language, which dates back to
-1958. Like Lisp, it offers fully-parenthesised syntax, and is based on the
-\emph{Lambda calculus} \citep{Rojas_atutorial}.
+Clojure is inspired from the \emph{Lisp} programming language, which dates back
+to 1958. Like Lisp, it offers fully-parenthesised syntax with prefix notation,
+and is based on the \emph{Lambda calculus} \citep{Rojas_atutorial}.
 
 \paragraph{}
 In order to manipulate audio data in Clojure, the music library \emph{Overtone}

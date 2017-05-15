@@ -44,6 +44,9 @@
    ; Watch out, atan2 takes y (the imaginary part) as first argument
    (mapv #(Math/atan2 %2 %1) real-parts imaginary-parts)])
 
+(defn map-phase
+  [phase]
+    (- phase (Math/round phase)))
 
 (defn polar-to-rectangular
   "Converts a map of numbers from real-imaginary coordinates to polar
@@ -84,37 +87,12 @@
       [magnitudes (phases-trigo-to-unit phases)])))
 
 (defn ifft
-  [magnitudes phases]
+  [[magnitudes phases]]
   (let [rectangular-bins (polar-to-rectangular magnitudes (phases-unit-to-trigo phases))
         result (double-array (utils/merge-channels rectangular-bins))]
     (aset-double result 1 0)
     (.realInverse jtransforms-fft-instance result true)
     (vec result)))
-
-(defn map-phase
-  [phase]
-  (- phase (math/ceil (- phase 0.5))))
-
-(defn instaneous-frequencies
-  ([phases prev-phases analysis-hoptime]
-  "Overload taking time-frequencies as rough frequencies estimates"
-  (instaneous-frequencies time-frequencies phases prev-phases analysis-hoptime))
-
-  ([frequencies phases prev-phases analysis-hoptime]
-  "Overload taking with custom rough frequencies estimates, for unit tests."
-  (mapv
-    (fn [frequency phase prev-phase]
-      ; The next instantaneous frequency is the value of the k-th frequency
-      ; plus a small offset
-      (+ frequency (/ (map-phase
-        (- phase prev-phase (* frequency analysis-hoptime))) analysis-hoptime)))
-    frequencies
-    phases
-    prev-phases)))
-
-(defn propagate-phases
-  [inst-frequencies mod-phases]
-    (mapv (fn [frequency phase] (+ phase (* frequency synthesis-hoptime))) inst-frequencies mod-phases))
 
 (defn split-in-frames
   [input-data analysis-hopsize]
@@ -130,27 +108,43 @@
       (recur (inc m) (utils/add-at-index res (frames m) (* m synthesis-hopsize)))
       res)))
 
+(defn instaneous-frequencies
+  [spectrums analysis-hoptime]
+  (let [phase-increments (mapv #(* analysis-hoptime %) time-frequencies)]
+    (conj
+      (vec (for [m                (range (dec (count spectrums)))
+           :let [[_2 phases]      (spectrums m)
+                 [_2 next-phases] (spectrums (inc m))]]
+        (vec (for [k                    (range frame-size)
+             :let [phase-inc            (phase-increments k)
+                   predicted-next-phase (+ phase-inc (phases k))
+                   phase-error          (map-phase (- (next-phases k) predicted-next-phase))]]
+          (+ (time-frequencies k) (/ phase-error analysis-hoptime))))))
+      time-frequencies)))
+
+(defn adjust-phases
+  [instantaneous-frequencies spectrums synthesis-hoptime]
+    (loop [m 1 modified-spectrums [(first spectrums)]]
+      (if (< m (count instantaneous-frequencies))
+        ; prev-inst-frequencies is the vector of inst frequencies for each
+        ; frequency channel of the previous frame
+        (let [[magnitudes phases]   (spectrums m)
+              prev-inst-frequencies (instantaneous-frequencies (dec m))
+              [_ prev-mod-phases]   (modified-spectrums (dec m))]
+          (recur (inc m) (conj modified-spectrums [magnitudes
+            (mapv
+              (fn [prev-mod-phase prev-inst-frequency]
+                (+ prev-mod-phase (* prev-inst-frequency synthesis-hoptime)))
+              prev-mod-phases prev-inst-frequencies)])))
+        modified-spectrums)))
+
 (defn time-scale
   [input-data scale]
-  (let [length           (count input-data)
-        analysis-hopsize (/ synthesis-hopsize scale)
-        analysis-hoptime (/ analysis-hopsize sampling-rate)
-        frames           (mapv apply-hann-window (split-in-frames input-data analysis-hopsize))
-        spectrums        (mapv fft frames)]
-    (overlap-and-add-frames
-      (loop [m                     0
-             prev-mod-phases       []
-             modified-frames       []]
-        (if (< m (count frames))
-          (let [[magnitudes phases] (spectrums m)
-                mod-phases
-                  (if (= m 0)
-                    ; If there is no previous frame, use the normal phase as modified phase
-                    phases
-                    ; If there is a previous frame, propagate the phases from the previous ones
-                    (let [[_ prev-phases]     (spectrums (dec m))
-                          ; If there is a previous frame, compute the instantaneous frequencies
-                          inst-frequencies    (instaneous-frequencies phases prev-phases analysis-hoptime)]
-                      (propagate-phases inst-frequencies prev-mod-phases)))]
-                (recur (inc m) mod-phases (conj modified-frames (apply-hann-window (ifft magnitudes mod-phases))))))
-        modified-frames))))
+  (let [length             (count input-data)
+        analysis-hopsize   (/ synthesis-hopsize scale)
+        analysis-hoptime   (/ analysis-hopsize sampling-rate)
+        frames             (mapv apply-hann-window (split-in-frames input-data analysis-hopsize))
+        spectrums          (mapv fft frames)
+        inst-frequencies   (instaneous-frequencies spectrums analysis-hoptime)
+        modified-spectrums (adjust-phases inst-frequencies spectrums synthesis-hoptime)]
+    (overlap-and-add-frames (mapv ifft modified-spectrums))))
