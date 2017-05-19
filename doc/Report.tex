@@ -3,14 +3,13 @@
 \usepackage[inline]{enumitem}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage{url}
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amsthm}
 \usepackage{cases}
 \usepackage[inline]{enumitem}
-\usepackage{color}
 \newcommand*{\codeinl}{\texttt}
-\newcommand{\TODO}[1]{\textcolor{red}{\textbf{\textit{\huge #1}}}}
 
 \theoremstyle{definition}
 \newtheorem*{definition}{Definition}
@@ -18,9 +17,6 @@
 \theoremstyle{remark}
 \newtheorem*{note}{Note}
 \newtheorem*{example}{Example}
-\theoremstyle{plain}
-\newtheorem{theorem}{Theorem}
-\newtheorem{corollary}{Corollary}
 
 \title{Pitch Shifting of Music Signals}
 \author{Théo Verhelst \\ Université Libre de Bruxelles}
@@ -145,8 +141,8 @@ is divided in \emph{analysis frames} \(x_m,\,m\in\mathbb{Z}\) having each a
 length of \(N\) samples, and these analysis frames are spaced by an
 \emph{analysis hop size} \(H_a\):
 \begin{equation}x_m(n)=\begin{cases}
-		x(mH_a + n) & \text{if }n\in [0:N[ \\
-		0           & \text{otherwise}
+	x(mH_a + n) & \text{if }n\in [0:N[ \\
+	0           & \text{otherwise}
 \end{cases}\end{equation}
 Then, we could want to put these frames in the output signal by spacing them by
 the synthesis hop size \(H_s\), achieving the correct time-scale modification.
@@ -156,7 +152,7 @@ to modify
 the analysis frames \(x_m\) into \emph{synthesis frames} \(y_m\) before adding
 them to the output signal \(y(n)\):
 \begin{equation}
-		y(n) = \sum_{m\in\mathbb{Z}}y_m(n-mH_s)
+	y(n) = \sum_{m\in\mathbb{Z}}y_m(n-mH_s)
 \end{equation}
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{pipeline.png}
@@ -177,10 +173,10 @@ A common procedure to compensate gain fluctuations is to multiply each modified
 frame by a windowing function \(w:\mathbb{N}\to[0,1]\) before adding them to the
 output signal \(y\):
 \begin{equation}
-		\label{synthesis}
-		y(n) = \sum_{m\in\mathbb{Z}}
-			\frac{w(n-mH_s)y_m(n-mH_s)}
-					 {\sum_{k\in\mathbb{N}}w(n-(m + k)H_s)}
+	\label{synthesis}
+	y(n) = \sum_{m\in\mathbb{Z}}
+	\frac{w(n-mH_s)y_m(n-mH_s)}
+	{\sum_{k\in\mathbb{N}}w(n-(m + k)H_s)}
 \end{equation}
 The numerator of the fraction is simply the product of the synthesis frame with
 the window function, while the denominator scales the gain amplification that
@@ -189,13 +185,13 @@ choice as a window function, and is defined as
 \begin{equation}
 \label{hann}
 w(n)=\begin{cases}
-	  0.5(1-cos(\frac{2\pi n}{N-1}))\text{ if }n\in[0:N[\\
-	  0 \text{ otherwise}\end{cases}
+	0.5(1-cos(\frac{2\pi n}{N-1}))\text{ if }n\in[0:N[\\
+	0 \text{ otherwise}\end{cases}
 \end{equation}
 The Hann window has the property that if we add Hann windows spaced by \(N/2\)
 in their domain, the sum of the overlapping parts we be equal to one:
 \begin{equation}
-		\forall n\in\mathbb{Z}\quad\sum_{i\in\mathbb{Z}}w(n + i\frac{N}{2}) = 1
+	\forall n\in\mathbb{Z}\quad\sum_{i\in\mathbb{Z}}w(n + i\frac{N}{2}) = 1
 \end{equation}
 This property allows to add windowed signal frames without gain multiplication,
 given that the synthesis hopsize is half the frame length. Note that in this
@@ -218,7 +214,7 @@ Fourier series decomposition of the signal. The Fourier transform of
 discrete-time signals is primarily defined for signals of length \(N\)
 \citep{bracewell1986fourier}:
 \begin{equation}
-	  X(k) = \sum_{n=0}^{N-1}x(n)\exp(-2\pi ikn/N)
+	X(k) = \sum_{n=0}^{N-1}x(n)\exp(-2\pi ikn/N)
 \end{equation}
 where \(k\in [0:N[\) denotes the frequency index (see \eqref{frequency_index}).
 This yields \(k\) complex numbers, where \(|X(k)|\) is the magnitude of the
@@ -228,7 +224,7 @@ frequencies in Hertz, and we don't want to divide the phase by \(2\pi\) each
 time we use it in an equation
 involving a frequency. Thus, we have
 \begin{equation}
-		X(k)= |X(k)|\exp(2\pi \text{i} \arg(X(k)))
+	X(k)= |X(k)|\exp(2\pi \text{i} \arg(X(k)))
 \end{equation}
 
 \paragraph{}
@@ -249,7 +245,7 @@ which can have high amplitude in high frequencies around
 A solution is to apply a windowing function to the analysis frame, so that the
 signal is always zero at the frame boundaries \citep{gabor1946theory}:
 \begin{equation}
-    X(m,k) = \sum_{n=0}^{N-1}x_m(n)w(n)\exp(-2\pi ikn/N)
+	X(m,k) = \sum_{n=0}^{N-1}x_m(n)w(n)\exp(-2\pi ikn/N)
 \end{equation}
 \(X(m,k)\) is the coefficient of the \emph{short-time Fourier transform} of
 the signal \(x\) at time \(m\) and at frequency \(k\). It is also named a
@@ -259,13 +255,13 @@ window as defined in \eqref{hann}
 \paragraph{}
 Note that the frequency index \(k\) corresponds to the physical frequency
 \begin{equation}
-		\label{frequency_index}
-    F_{\text{coef}}(k) = \frac{F_s k}{N}
+	\label{frequency_index}
+	F_{\text{coef}}(k) = \frac{F_s k}{N}
 \end{equation}
 where \(F_s\) is the sampling rate in Hz, and the frame index \(m\) corresponds
 to the physical time
 \begin{equation}
-    T_{\text{coef}}(m) = \frac{H_a m}{F_s}
+	T_{\text{coef}}(m) = \frac{H_a m}{F_s}
 \end{equation}
 
 \paragraph{Synthesis with modified frames}
@@ -275,7 +271,7 @@ inverse Fourier transform from these synthesis time-frequency bins has phase
 coherence from one frame to the next. Since we are only interested in phase
 adjustment, we can already set
 \begin{equation}
-    |Y(m,k)| = |X(m,k)|
+	|Y(m,k)| = |X(m,k)|
 \end{equation}
 We also have to determine the phase \(\arg(Y(m,k))\), so that we can synthesise
 the synthesis frame \(y_m\) from the synthesis time-frequency bins \(Y(m,k)\).
@@ -285,8 +281,8 @@ Note that the modified STFT may not be invertible, i.e. there may be no signal
 STFT of the resulting signal. It results that the synthesis frame \(y_m\) is
 given by:
 \begin{equation}
-		\label{modified_synth}
-		y_m(n)=\frac{1}{N}\sum_{k=0}^{N-1}Y(m,k)\exp(2\pi\text{i}kn/N)
+	\label{modified_synth}
+	y_m(n)=\frac{1}{N}\sum_{k=0}^{N-1}Y(m,k)\exp(2\pi\text{i}kn/N)
 \end{equation}
 We can then reconstruct the output signal \(y\) with the equation
 \eqref{synthesis}.
@@ -294,15 +290,16 @@ We can then reconstruct the output signal \(y\) with the equation
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{phase-vocoder.png}
 \caption{The phase-vocoder procedure.
-\begin{enumerate*}[label={(\alph*)}]
-  \item The input signal is analysed and its STFT is calculated;
-  \item The previous modified time-frequency bin is compared with the current
-    unmodified time-frequency bin;
-  \item The phase of the previous time-frequency bin is used to adjust the phase
-    of the current one;
-  \item The modified time-frequency bins are converted back into time-domain and
-    overlapped.
-\end{enumerate*}}
+	\begin{enumerate*}[label={(\alph*)}]
+	\item The input signal is analysed and its STFT is calculated;
+	\item The previous modified time-frequency bin is compared with the current
+	unmodified time-frequency bin;
+	\item The phase of the previous time-frequency bin is used to adjust the phase
+	of the current one;
+	\item The modified time-frequency bins are converted back into time-domain and
+	overlapped.
+	\end{enumerate*}
+}
 \end{figure}
 
 \paragraph{Instantaneous frequency}
@@ -323,16 +320,16 @@ advance}, that is, the phase increment that should occur from the time
 \(T_{\text{coef}}(m)\) to the time \(T_{\text{coef}}(m+1)\), according to the
 frequency estimate \(F_{\text{coef}}(k)\):
 \begin{equation}
-    \phi^{\text{inc}}=F_{\text{coef}}(k) \Delta t_a
+	\phi^{\text{inc}}=F_{\text{coef}}(k) \Delta t_a
 \end{equation}
 where \(\Delta t_a\) is analysis hop time given is seconds:
 \begin{equation}
-    \Delta t_a=H_a/F_s
+	\Delta t_a=H_a/F_s
 \end{equation}
 Since we know the phase \(\phi_m\), we can compute the predicted phase at
 the time \(T_{\text{coef}}(m+1)\):
 \begin{equation}
-    \phi^{\text{pred}}_{m+1}=\phi_m + \phi^{\text{inc}}
+	\phi^{\text{pred}}_{m+1}=\phi_m + \phi^{\text{inc}}
 \end{equation}
 But because of the lack of precision of the phase vocoder, this predicted phase
 may not be equal to \(\phi_{m+1}\) when mapped in the range \([0, 1[\).
@@ -340,13 +337,13 @@ We can then compute the difference with the effective phase \(\phi_{m+1}\), and
 this difference is called the \emph{phase error} (or \emph{heterodyned phase
 increment}):
 \begin{equation}
-    \phi^{\text{err}}_m=\Psi(\phi_{m+1} - \phi^{\text{pred}}_{m+1})
+	\phi^{\text{err}}_m=\Psi(\phi_{m+1} - \phi^{\text{pred}}_{m+1})
 \end{equation}
 where the function \(\Psi\) is the \emph{principal argument function} that maps
 the phase difference to the range \([-0.5, 0.5]\).
 Here is a possible implementation of \(\Psi\):
 \begin{equation}
-    \Psi:\mathbb{R}\to[-0.5,0.5]:\phi\mapsto \phi - \lceil \phi-0.5 \rceil
+	\Psi:\mathbb{R}\to[-0.5,0.5]:\phi\mapsto \phi - \lceil \phi-0.5 \rceil
 \end{equation}
 From this phase error, we can compute the \emph{instantaneous frequency}: this
 is a refinement of \(F_{\text{coef}}(k)\), in an attempt to determine the
@@ -355,9 +352,9 @@ This sinusoid should have a phase of
 \(\phi_m\) at the time \(T_{\text{coef}}(m)\) and a phase \(\phi_{m+1}\) at
 the time \(T_{\text{coef}}(m+1)\).
 \begin{align}
-    &F_{\text{coeff}}^{\text{IF}}(m,k)=\frac{\phi^{\text{inc}} + \phi^{\text{err}}_m}{\Delta t_a}\\
-    &=F_{\text{coef}}(k) + \frac{\phi^{\text{err}}_m}{\Delta t_a}\\
-    &=F_{\text{coef}}(k) + \frac{\Psi(\phi_{m+1} - \phi_m - \phi^{\text{inc}})}{\Delta t_a}
+	&F_{\text{coeff}}^{\text{IF}}(m,k)=\frac{\phi^{\text{inc}} + \phi^{\text{err}}_m}{\Delta t_a}\\
+	&=F_{\text{coef}}(k) + \frac{\phi^{\text{err}}_m}{\Delta t_a}\\
+	&=F_{\text{coef}}(k) + \frac{\Psi(\phi_{m+1} - \phi_m - \phi^{\text{inc}})}{\Delta t_a}
 \end{align}
 
 \paragraph{Phase adjustment}
@@ -366,7 +363,7 @@ this information to adjust the phase of the time-frequency bins. The idea is to
 set the phase of the bin according to the phase and the instantaneous frequency
 of corresponding bin in the previous frame:
 \begin{equation}
-		\gamma_m=\gamma_{m-1} + F_{\text{coeff}}^{\text{IF}}(m-1,k)\Delta t_s
+	\gamma_m=\gamma_{m-1} + F_{\text{coeff}}^{\text{IF}}(m-1,k)\Delta t_s
 \end{equation}
 We now use the synthesis hop time since we are synthesising the output frames,
 and they are spaced by the synthesis hoptime \(\Delta t_s=H_s/F_s\).
@@ -503,10 +500,10 @@ we can find that
 \end{bmatrix}
 &=
 \begin{bmatrix}
-	 1 &  0 &   0 &  0   \\
-	 0 &  0 & 0.5 &  0   \\
+	1 &  0 &   0 &  0   \\
+	0 &  0 & 0.5 &  0   \\
 	-3 &  3 &  -1 & -0.5 \\
-	 2 & -2 & 0.5 &  0.5 \\
+	2 & -2 & 0.5 &  0.5 \\
 \end{bmatrix}
 \begin{bmatrix}
 	y_1\\y_2\\y_2-y_0\\y_3-y_1
@@ -625,6 +622,10 @@ be achieved in Clojure, but this would break functional purity, thus bypassing
 the point of functionnal programming. For the sake of comparison, another
 implementation in Java has been written, and a speed improvement of factor 50
 has been noted, although no care has been addressed to code optimization.
+
+\paragraph{}
+The code of this implementation can be freely accessed at the url
+\url{https://github.com/TheoVerhelst/OverPitch} (last accessed \today).
 
 \section{Conclusion}
 We presented state-of-the-art pitch-shifting procedure suited to music signals,
