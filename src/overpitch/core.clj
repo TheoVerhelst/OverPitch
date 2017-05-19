@@ -32,6 +32,6 @@
   (let [args (vec args)]
     (println "Starting!")
     ;(time (transform-wav "orig.wav" "pitch-shifted.wav" pitch-shift 1.25))
-    (time (transform-wav "sine.wav" "time-scaled.wav" time-scale 1.25))
-    ;(time (transform-wav "orig.wav" "resampled.wav" resample (/ 1 1.25)))
+    ;(time (transform-wav "orig.wav" "time-scaled.wav" time-scale 1.25))
+    (time (transform-wav "res.wav" "pitch-shifted.wav" resample (/ 1 1.25)))
     (println "Done.")))

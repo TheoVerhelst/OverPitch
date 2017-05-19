@@ -4,8 +4,10 @@
   (:import  (edu.emory.mathcs.jtransforms.fft DoubleFFT_1D)))
 
 ; Algorithm parameters
-(def frame-size 1024)
-(def synthesis-hopsize (/ frame-size 2))
+(def frame-size 2048)
+(def synthesis-hopsize (/ frame-size 4))
+; TODO This factor should be 0.5, but the signal is strangely not multiplied by the 1/4 overlap
+(def scaling-overlap-factor 1)
 (def sampling-rate 44100) ; TODO parametrize this
 (def synthesis-hoptime (/ synthesis-hopsize sampling-rate))
 (def time-frequencies (mapv #(/ (* % sampling-rate) frame-size) (range frame-size)))
@@ -110,17 +112,12 @@
   [frames]
   (let [frames (mapv apply-hann-window frames)
         length (+ (* (count frames) synthesis-hopsize) (- frame-size synthesis-hopsize))]
-    (for [frame (subvec frames 40 48)] (print frame))
-    (mapv
-      (fn [i]
-        (reduce +
-          (map-indexed
-            (fn [m frame]
-              (let [in-frame-index (- i (* m synthesis-hopsize))]
-                (if (<= 0 in-frame-index (dec frame-size))
-                  (frame in-frame-index)
-                  0)))
-            frames)))
+    (mapv (fn [i] (reduce +
+        (map-indexed (fn [m frame] (let [in-frame-index (- i (* m synthesis-hopsize))]
+          (if (<= 0 in-frame-index (dec frame-size))
+            (* (frame in-frame-index) scaling-overlap-factor)
+            0)))
+          frames)))
       (range length))))
 
 (defn instaneous-frequencies

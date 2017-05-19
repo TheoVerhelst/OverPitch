@@ -22,35 +22,35 @@
 \newtheorem{theorem}{Theorem}
 \newtheorem{corollary}{Corollary}
 
-\title{Pitch Scaling of Music Signals}
+\title{Pitch Shifting of Music Signals}
 \author{Théo Verhelst \\ Université Libre de Bruxelles}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Pitch scaling is the task of modifying the frequency of a signal while keeping
-its playback speed intact. Pitch scaling is an important feature of many digital
+Pitch shifting is the task of modifying the frequency of a signal while keeping
+its playback speed intact. Pitch shifting is an important feature of many digital
 music tools, and needs to be done in real-time with the highest available
 quality. In this report, we describe succinctly state-of-the-art techniques of
-pitch scaling, and we explain in detail one that is particularly suited to music
+pitch shifting, and we explain in detail one that is particularly suited to music
 signals. We also describe a Clojure implementation of this technique. This
 technique uses phase vocoder for time-scaling and 3rd order spline interpolation
 for resampling.
 \end{abstract}
 
 \section{Introduction}
-Pitch scaling is a process that changes the frequency of a signal without
-modifying its speed. The main difficulty of pitch scaling is to make the
-synthesised signal as natural as the original, so that it sounds like as if it
-was recorded or created on this new pitch. More precisely, the timbre and the
+\emph{Pitch shifting} is a process that changes the frequency of a signal
+without modifying its speed. The main difficulty of pitch shifting is to make
+the synthesised signal as natural as the original, so that it sounds like as if
+it was recorded or created on this new pitch. More precisely, the timbre and the
 speed of the signal need to be preserved.
 
 \paragraph{}
-One application of pitch scaling is to scale the pitch of an instrument
+One application of pitch shifting is to change the pitch of an instrument
 recording in a music production software, in order to tune it to the other
-instruments, or for any other musical purpose. But the main use of pitch scaling
-is probably in DJ software \citep{Cliff00hangthe}: one can change the pitch of a
+instruments, or for any other musical purpose. Another widespread use of pitch
+shifting is in DJ software \citep{Cliff00hangthe}: one can change the pitch of a
 track, and therefore its key, in order to make the transition to the next track
 easier and smoother.
 
@@ -62,12 +62,12 @@ sophisticated technique in order to preserve the playback speed constant
 \citep{DM}.
 
 \paragraph{}
-In contrast to pitch scaling, time-scale modification (TSM) is a process that
-modifies the speed of a signal without modifying its pitch and its timbre.
-TSM has been subject to many more studies than pitch scaling, but we base our
-work on these studies, since it is possible to show that both processes are
-mathematically equivalent. Indeed, in order to change the pitch of a signal, one
-can use a well-known TSM method, and then resample the signal.
+In contrast to pitch shifting, \emph{time-scale modification} (\emph{TSM}) is a
+process that modifies the speed of a signal without modifying its pitch and its
+timbre. TSM has been subject to many more studies than pitch shifting. However,
+we base our work on these studies, since it is possible to show that both
+processes are mathematically equivalent. Indeed, in order to change the pitch of
+a signal, one can use a well-known TSM method, and then resample the signal.
 
 \section{Time-scale modification techniques}
 TSM techniques can be grouped in two main categories: \emph{time-domain TSM} and
@@ -108,7 +108,7 @@ not preserved, leading to audible artifacts, known as \emph{phasiness}, or
 
 \section{General procedure}
 \label{sec:procedure}
-Pitch scaling process is split in two steps: \begin{enumerate*}[label=\arabic*)]
+Pitch shifting process is split in two steps: \begin{enumerate*}[label=\arabic*)]
 \item apply a TSM procedure \item resample the signal\end{enumerate*}. Let
 \(\alpha\) be the scaling factor. We first apply a TSM procedure with parameter
 \(\alpha\), so that the playback speed is modified, while the pitch is left
@@ -178,9 +178,14 @@ frame by a windowing function \(w:\mathbb{N}\to[0,1]\) before adding them to the
 output signal \(y\):
 \begin{equation}
 		\label{synthesis}
-		y(n) = \sum_{m\in\mathbb{Z}}w(n-mH_s)y_m(n-mH_s)
+		y(n) = \sum_{m\in\mathbb{Z}}
+			\frac{w(n-mH_s)y_m(n-mH_s)}
+					 {\sum_{k\in\mathbb{N}}w(n-(m + k)H_s)}
 \end{equation}
- The Hann window is widely used for this purpose, and is defined as
+The numerator of the fraction is simply the product of the synthesis frame with
+the window function, while the denominator scales the gain amplification that
+may be induced by the use of the window function. The Hann window is a common
+choice as a window function, and is defined as
 \begin{equation}
 \label{hann}
 w(n)=\begin{cases}
@@ -192,8 +197,9 @@ in their domain, the sum of the overlapping parts we be equal to one:
 \begin{equation}
 		\forall n\in\mathbb{Z}\quad\sum_{i\in\mathbb{Z}}w(n + i\frac{N}{2}) = 1
 \end{equation}
-This property is essential to the equation \eqref{synthesis}: if not satisfied,
-the output signal may be multiplied by more than one in some places.
+This property allows to add windowed signal frames without gain multiplication,
+given that the synthesis hopsize is half the frame length. Note that in this
+case, the denominator of \eqref{synthesis} reduces to \(1\).
 \begin{figure}[h]
 \includegraphics[width=\linewidth]{hann.png}
 \caption{The Hann window function.}
@@ -427,6 +433,18 @@ in the spectrum. As a result, the vertical phase incoherence is greatly reduced.
 Furthemore, the computational cost of the phase-vocoder is also reduced since
 the phase propagation has to be computed only for the peak frequencies.
 
+\paragraph{}
+J. Driedger and M. Müller presented an hybrid approach to time-scale
+modification of music signals, taking advantages of both time-domain and
+frequency-domain advantages \citep{DM}. We first separate the signal in
+percussive and harmonic content, and then we apply a time-domain procedure with
+a short frame length on the percussive component, and a frequency-domain
+procedure on the harmonic component, and finally we add both results.
+Percussive-harmonic separation can be achieved by applying a median filter
+on the time-frequency bins. This procedure benefits from all the improvements
+that have been made on the phase-vocoder, while it easily copes with transient
+smearing by using an effective time-domain algorithm.
+
 \section{Resampling}
 The goal of resampling is to reconstruct a continuous-time signal from the given
 discrete-time samples, and then sample this signal again with another sampling
@@ -443,7 +461,7 @@ In order to construct the continuous-time signal, we need an interpolator. There
 exists various interpolators, such as truncated sinc
 \citep{duncan1988fundamentals, rossum1989an}, linear-interpolator
 \citep{rossum1993}, b-spline interpolator \citep{Sankar1998},
-Lagrange interpolator \citep{Schafer1973}. We chose 3rd order Hermitian spline
+Lagrange interpolator \citep{Schafer1973}. We chose 3rd order Hermite spline
 interpolator, for its simple implementation \citep{Grisoni97anhermitian}.
 
 \paragraph{}
@@ -473,7 +491,7 @@ f'(1)=\frac{y_3-y_1}{2}\label{constr4}
 \eqref{constr1} and \eqref{constr2} are natural constraints of spline
 interpolator: we want that the interpolating function passes through the
 supplied values \((x(n),\,x(n+1))\). But in order to determine the factors
-\(\alpha_i\), we need two more constraints. One solution is to use Hermitian
+\(\alpha_i\), we need two more constraints. One solution is to use Hermite
 splines \citep{de1978practical}, that is, the derivative of \(f\) at \(t\in\{0,
 1\}\) is equal to the derivative of a straight line between the previous and the
 next point (\eqref{constr3} and \eqref{constr4}). By expressing the equations as
@@ -503,7 +521,9 @@ sampling rate.
 By following the described resampling procedure, one can achieve fairly good
 results. Only informal tests have been done, but no audible artifact has been
 noticed, and the result is close to what one would expect from any resampling
-algorithm.
+algorithm. Furthemore, this algorithm is fairly efficient, as it requires
+16 multiplications and 13 additions by output sample in its most naive
+implementation.
 
 \paragraph{}
 Although the input signal has the domain \([-1,1]\), this resampling technique
@@ -560,7 +580,7 @@ been hidden behind a library function call. We then choosen to mainly use the
 built-in features of the Clojure language, in order to make the whole procedure
 explicit.
 
-\subsection{Implementation of pitch scaling}
+\subsection{Implementation of pitch shifting}
 The pitch-shifting implementation is split in three main parts, each having its
 own namespace: the time-scaling algorithm in the namespace
 \codeinl{time-scaling} , the resampling algorithm in the namespace
@@ -582,15 +602,49 @@ tempo and the key of a music file in only one operation, in order to make a
 smooth transition with another music file.
 
 \section{Results}
+The implementation of the described phase-vocoder procedure demonstrated the
+expected results: time-scaling is achieved without phase jumps, and harmonic
+signals are well preserved. However, transient smearing is clearly audible, as
+it would be expected from such a basic phase-vocoder procedure. Furthemore,
+speech in signals suffers from formant shifting. Indeed, the timbre of a voice
+depends uppon its fundamental frequency, but also on its harmonics, which
+together make the \emph{formants} of the voice. By simply scaling the pitch
+of the signal, all the harmonics and formants are shifted in the frequency
+domain. However, the relationship between harmonics and fundamental frequency
+is not linear in a naturally pitched voice. Thus, the result of our algorithm
+on a singing voice does not sound as natural as if the music was effectively
+played at a higher pitch.
+
+\paragraph{}
+Moreover, the performances of the Clojure implementation are not suited to
+perform real-time music signal manipulation, because of the invariant nature of
+its primitives: when an operation is performed on a series of number (such as
+applying the Hann window function on a frame), the operation is not done
+in-place, thus requiring a copy of the data. In fact, in-place computations can
+be achieved in Clojure, but this would break functional purity, thus bypassing
+the point of functionnal programming. For the sake of comparison, another
+implementation in Java has been written, and a speed improvement of factor 50
+has been noted, although no care has been addressed to code optimization.
 
 \section{Conclusion}
 We presented state-of-the-art pitch-shifting procedure suited to music signals,
 based on the standard phase-vocoder technique and on resampling with 3rd-order
-spline interpolation. This lead to fairly good results, although there is still
-room for improvement, both on quality and on efficiency. We then briefly
+Hermite spline interpolation. We explained the limitations of our design, and
+some solutions has been cited in order to address them. We then briefly
 introduced the functionnal programming paradigm, as well as the Clojure
-programming language. Finally, we described our implementation of the
-pitch-shifting algorithm in Clojure.
+programming language. We showed that the separation of the two steps in the
+pitch-shifting procedure allows for both time-scaling \emph{and} pitch-shifting,
+without any additional computational cost. Finally, we described our
+implementation of the pitch-shifting algorithm in Clojure. The quality of the
+result is as expected, but the computational efficiency is not good enough in to
+allow real-time applications. We showed that an alternative implementation in a
+lower-level programming language such as Java enables a significant improvement
+in performances.
+
+\section{Acknowledgements}
+We thanks J. Driedger and M. Müller for their remarkable work in fostering the
+common time-scale procedures, and for the clear schematics, that have been
+used and adapted in this thesis.
 
 \footnotesize
 \bibliographystyle{apalike}
