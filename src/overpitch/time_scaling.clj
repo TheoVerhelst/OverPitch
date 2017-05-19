@@ -5,7 +5,7 @@
 
 ; Algorithm parameters
 (def frame-size 1024)
-(def synthesis-hopsize (/ frame-size 4))
+(def synthesis-hopsize (/ frame-size 2))
 (def sampling-rate 44100) ; TODO parametrize this
 (def synthesis-hoptime (/ synthesis-hopsize sampling-rate))
 (def time-frequencies (mapv #(/ (* % sampling-rate) frame-size) (range frame-size)))
@@ -29,11 +29,13 @@
   [frame]
   ; The dec makes hann-window output [0 0.5 1 0.5 0] rather than [0 0.34 0.9 0.9 0.34]
   (let [length (dec (count frame))]
-    (vec
-      (map-indexed
-        ; the / maps [0, n] to [0, 1]
-        (fn [i x] (* (hann-window (/ i length)) x))
-        frame))))
+    (if (<= length 0)
+      [(first frame)]
+      (vec
+        (map-indexed
+          ; the / maps [0, n] to [0, 1]
+          (fn [i x] (* (hann-window (/ i length)) x))
+          frame)))))
 
 (defn rectangular-to-polar
   "Converts a map of numbers from real-imaginary coordinates to polar
@@ -57,14 +59,16 @@
 
 (defn phases-trigo-to-unit
   [phases]
-    (vec (for [phase phases :let [scaled (/ phase 2 Math/PI)]]
+  (mapv (fn [phase] (let [scaled (/ phase 2 Math/PI)]
       ; scaled is in the range [-0.5, 0.5], map it to [0, 1]
-      (if (< scaled 0) (inc' scaled) scaled))))
+      (if (< scaled 0) (inc' scaled) scaled)))
+    phases))
 
 (defn phases-unit-to-trigo
   [phases]
-    (vec (for [phase phases :let [mapped (if (> phase 0.5) (dec' phase) phase)]]
-      (* mapped 2 Math/PI))))
+  (mapv (fn [phase] (let [mapped (if (> phase 0.5) (dec' phase) phase)]
+      (* mapped 2 Math/PI)))
+    phases))
 
 (defn filter-zeros
   "Replaces all numbers almost equal to zero by zero."
@@ -76,7 +80,7 @@
   (let [result (double-array (* 2 frame-size) frame)]
     ; call realForwardFull method on the jtransforms fft object, with result as
     ; argument. The array result will be overwritten by the method
-    (.realForward jtransforms-fft-instance result)
+    (.realForwardFull jtransforms-fft-instance result)
     ; JTransforms puts Re[n/2] in result[1], we don't need that
     (aset-double result 1 0)
     ; Now result contains real and imaginary values, convert it to polar
@@ -90,36 +94,47 @@
   [[magnitudes phases]]
   (let [rectangular-bins (polar-to-rectangular magnitudes (phases-unit-to-trigo phases))
         result (double-array (utils/merge-channels rectangular-bins))]
-    (aset-double result 1 0)
-    (.realInverse jtransforms-fft-instance result true)
-    (vec result)))
+    (.complexInverse jtransforms-fft-instance result true)
+    (first (utils/split-channels (vec result) 2))))
 
 (defn split-in-frames
   [input-data analysis-hopsize]
   (let [length (count input-data)]
-    (for [i     (range 0 length analysis-hopsize)
-    :let [slice (subvec input-data i (min length (+ i frame-size)))]]
-      (concat slice (repeat 0 (- frame-size (count slice)))))))
+    (mapv
+      (fn [i]
+        (let [slice (subvec input-data i (min length (+ i frame-size)))]
+          (concat slice (repeat 0 (- frame-size (count slice))))))
+      (range 0 length analysis-hopsize))))
 
 (defn overlap-and-add-frames
   [frames]
-  (loop [m 0 res []]
-    (if (< m (count frames))
-      (recur (inc m) (utils/add-at-index res (frames m) (* m synthesis-hopsize)))
-      res)))
+  (let [frames (mapv apply-hann-window frames)
+        length (+ (* (count frames) synthesis-hopsize) (- frame-size synthesis-hopsize))]
+    (for [frame (subvec frames 40 48)] (print frame))
+    (mapv
+      (fn [i]
+        (reduce +
+          (map-indexed
+            (fn [m frame]
+              (let [in-frame-index (- i (* m synthesis-hopsize))]
+                (if (<= 0 in-frame-index (dec frame-size))
+                  (frame in-frame-index)
+                  0)))
+            frames)))
+      (range length))))
 
 (defn instaneous-frequencies
   [spectrums analysis-hoptime]
   (let [phase-increments (mapv #(* analysis-hoptime %) time-frequencies)]
     (conj
-      (vec (for [m                (range (dec (count spectrums)))
-           :let [[_2 phases]      (spectrums m)
-                 [_2 next-phases] (spectrums (inc m))]]
-        (vec (for [k                    (range frame-size)
-             :let [phase-inc            (phase-increments k)
-                   predicted-next-phase (+ phase-inc (phases k))
-                   phase-error          (map-phase (- (next-phases k) predicted-next-phase))]]
-          (+ (time-frequencies k) (/ phase-error analysis-hoptime))))))
+      (mapv (fn [m] (let [[_1 phases]      (spectrums m)
+                          [_2 next-phases] (spectrums (inc m))]
+        (mapv (fn [k] (let [phase-inc            (phase-increments k)
+                            predicted-next-phase (+ phase-inc (phases k))
+                            phase-error          (map-phase (- (next-phases k) predicted-next-phase))]
+            (+ (time-frequencies k) (/ phase-error analysis-hoptime))))
+          (range frame-size))))
+        (range (dec (count spectrums))))
       time-frequencies)))
 
 (defn adjust-phases

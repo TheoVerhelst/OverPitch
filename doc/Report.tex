@@ -232,9 +232,9 @@ transform on analysis frames \(x_m\):
 \begin{equation*}
 X(m,k)=\sum_{n=0}^{N-1}x_m(n)\exp(-2\pi ikn/N)
 \end{equation*}
-But this can lead to unexpected high amplitudes in the high frequencies:
-the Fourier transform works as if the signal was periodic with a period \(N\),
-i.e. as if we where computing the Fourier series of a signal
+But this can lead to unexpected high amplitudes in the high frequencies: the
+Fourier transform works as if the signal was periodic with a period \(N\)
+\citep{Dolson1986}, i.e. as if we where computing the Fourier series of a signal
 \begin{equation}
 \tilde x:\mathbb{Z}\to\mathbb{R}:n\mapsto x_m(n\mod N)
 \end{equation}
