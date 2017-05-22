@@ -5,6 +5,8 @@ This library is an implementation of state-of-the-art pitch-shifting algorithms.
 This project is written in Clojure, and the dependencies are listed in
 `project.clj`. The simplest way to use this project is to install
 [Leiningen](https://leiningen.org/) and run the command `lein deps`.
+**Note:** you may need to start a JACK server in order to properly start
+Overtone.
 
 ## Usage
 Given a the file `your-audio-file.wav` file, you can pitch-shift it by a factor

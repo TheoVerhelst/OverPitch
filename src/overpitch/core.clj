@@ -23,15 +23,14 @@
           (merge-channels
             (for [channel (split-channels input-data n-channels)]
               (transformation channel scale))))
-        output-path (:rate input-buffer-info) n-channels)))
-  (overtone/free-all-loaded-samples))
+        output-path (:rate input-buffer-info) n-channels))))
 
 (defn -main
   "Main function"
   [& args]
-  (let [args (vec args)]
-    (println "Starting!")
-    ;(time (transform-wav "orig.wav" "pitch-shifted.wav" pitch-shift 1.25))
-    ;(time (transform-wav "orig.wav" "time-scaled.wav" time-scale 1.25))
-    (time (transform-wav "res.wav" "pitch-shifted.wav" resample (/ 1 1.25)))
-    (println "Done.")))
+  (let [args (vec args)
+        input-file (args 0)
+        output-file (args 1)
+        scale (double (bigdec (args 2)))]
+    ;(transform-wav input-file output-file pitch-shift scale)
+    (println "Finished, you can hit Ctrl+C and hear the result in " output-file)))

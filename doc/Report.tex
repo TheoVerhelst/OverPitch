@@ -26,21 +26,21 @@
 
 \begin{abstract}
 Pitch shifting is the task of modifying the frequency of a signal while keeping
-its playback speed intact. Pitch shifting is an important feature of many digital
+its duration intact. Pitch shifting is an important feature of many digital
 music tools, and needs to be done in real-time with the highest available
-quality. In this report, we describe succinctly state-of-the-art techniques of
-pitch shifting, and we explain in detail one that is particularly suited to music
-signals. We also describe a Clojure implementation of this technique. This
-technique uses phase vocoder for time-scaling and 3rd order spline interpolation
-for resampling.
+quality. In this report, we describe state-of-the-art techniques of pitch
+shifting, and we explain in detail one that is particularly suited to music
+signals. This technique uses phase vocoder for time-scaling and 3rd order spline
+interpolation for resampling. We also describe a Clojure implementation of this
+technique.
 \end{abstract}
 
 \section{Introduction}
 \emph{Pitch shifting} is a process that changes the frequency of a signal
-without modifying its speed. The main difficulty of pitch shifting is to make
+without modifying its duration. The main difficulty of pitch shifting is to make
 the synthesised signal as natural as the original, so that it sounds like as if
 it was recorded or created on this new pitch. More precisely, the timbre and the
-speed of the signal need to be preserved.
+duration of the signal need to be preserved.
 
 \paragraph{}
 One application of pitch shifting is to change the pitch of an instrument
@@ -52,18 +52,19 @@ easier and smoother.
 
 \paragraph{}
 The most straightforward way to change the pitch of an audio signal is to
-resample the signal and playing it back at its original rate. But
-both pitch and speed are modified at the same time. Thus, we need a more
-sophisticated technique in order to preserve the playback speed constant
-\citep{DM}.
+resample the signal at another sampling rate, and playing it back at its
+original rate. But both pitch and duration are modified at the same time. Thus,
+we need a more sophisticated technique in order to preserve the duration
+constant \citep{DM}.
 
 \paragraph{}
 In contrast to pitch shifting, \emph{time-scale modification} (\emph{TSM}) is a
-process that modifies the speed of a signal without modifying its pitch and its
-timbre. TSM has been subject to many more studies than pitch shifting. However,
-we base our work on these studies, since it is possible to show that both
-processes are mathematically equivalent. Indeed, in order to change the pitch of
-a signal, one can use a well-known TSM method, and then resample the signal.
+process that modifies the duration of a signal without modifying its pitch and
+its timbre. TSM has been subject to many more studies than pitch shifting.
+However, we base our work on these studies, since it is possible to show that
+both processes are mathematically equivalent. Indeed, in order to change the
+pitch of a signal, one can use a well-known TSM method, and then resample the
+signal.
 
 \section{Time-scale modification techniques}
 TSM techniques can be grouped in two main categories: \emph{time-domain TSM} and
@@ -144,13 +145,13 @@ length of \(N\) samples, and these analysis frames are spaced by an
 	x(mH_a + n) & \text{if }n\in [0:N[ \\
 	0           & \text{otherwise}
 \end{cases}\end{equation}
-Then, we could want to put these frames in the output signal by spacing them by
-the synthesis hop size \(H_s\), achieving the correct time-scale modification.
-But this would cause very audible phase discontinuities, since the end of a
-frame would no longer match with the beginning of the next frame. Thus, we need
-to modify
-the analysis frames \(x_m\) into \emph{synthesis frames} \(y_m\) before adding
-them to the output signal \(y(n)\):
+Then, we could want to put these frames in the output signal by spacing them
+with another hop size, which we name \emph{synthesis hop size} \(H_s\), thus
+changing the overall duration of the signal. But this would cause very audible
+phase discontinuities, since the end of a frame would no longer match with the
+beginning of the next frame. Thus, we need to modify the analysis frames \(x_m\)
+into \emph{synthesis frames} \(y_m\) before adding them to the output signal
+\(y(n)\):
 \begin{equation}
 	y(n) = \sum_{m\in\mathbb{Z}}y_m(n-mH_s)
 \end{equation}
@@ -203,26 +204,25 @@ case, the denominator of \eqref{synthesis} reduces to \(1\).
 
 \subsection{Phase-vocoder time-scale modification}
 The phase vocoder is a common frequency-domain technique used to derive the
-\emph{synthesis frames} \(y_m\)  from the analysis frames \(x_m\). The idea
-is to compute the spectrum of the frame with the Fourier transform, and change
-the phases of this spectrum so that the signal re-synthesised from this modified
+\emph{synthesis frames} \(y_m\)  from the analysis frames \(x_m\). The idea is
+to compute the spectrum of the frame with the Fourier transform, and change the
+phases of this spectrum so that the signal re-synthesised from this modified
 spectrum has no phase jump with the following and previous frames.
+
 \paragraph{Short-time Fourier transform}
-The spectrum of a signal is the frequency-domain representation of
-a time-domain signal, and is composed by the amplitudes and phases of the
-Fourier series decomposition of the signal. The Fourier transform of
-discrete-time signals is primarily defined for signals of length \(N\)
-\citep{bracewell1986fourier}:
+The spectrum of a signal is the frequency-domain representation of a time-domain
+signal, and is composed by the amplitudes and phases of the Fourier series
+decomposition of the signal. The Fourier transform of discrete-time signals is
+primarily defined for signals of length \(N\) \citep{bracewell1986fourier}:
 \begin{equation}
 	X(k) = \sum_{n=0}^{N-1}x(n)\exp(-2\pi ikn/N)
 \end{equation}
 where \(k\in [0:N[\) denotes the frequency index (see \eqref{frequency_index}).
-This yields \(k\) complex numbers, where \(|X(k)|\) is the magnitude of the
+This yields \(N\) complex numbers, where \(|X(k)|\) is the magnitude of the
 \(k\)th frequency, and \(\arg(X(k))\in[0,1[\) is the phase of the \(k\)th
 frequency. Note that we use phases in the unit range because we also manipulate
 frequencies in Hertz, and we don't want to divide the phase by \(2\pi\) each
-time we use it in an equation
-involving a frequency. Thus, we have
+time we use it in an equation involving a frequency. Thus, we have
 \begin{equation}
 	X(k)= |X(k)|\exp(2\pi \text{i} \arg(X(k)))
 \end{equation}
@@ -378,9 +378,9 @@ previous frame:
 	\label{initial_phase}
 	\gamma_0=\phi_0
 \end{equation}
-Now that we have a synthesis time-frequency bin for the whole signal, we can
-use the equation \eqref{modified_synth} to construct the synthesis frames, and
-then equation \eqref{synthesis} to synthesise the final output signal.
+Now that we defined all synthesis time-frequency bins, we can use the equation
+\eqref{modified_synth} to construct the synthesis frames, and then equation
+\eqref{synthesis} to synthesise the final output signal.
 
 \begin{figure}
 \includegraphics[width=\linewidth]{phase-unwrapping.png}
@@ -471,7 +471,7 @@ that this polynomial passes through these values.
 	y_0=x(n-1);\;y_1=x(n);\;y_2=x(n+1);\;y_3=x(n+2)
 	\end{equation*}
 \end{notation}
-We search a function
+We search the interpolating function
 \begin{equation}
 \label{interpolation_poly}
 f:[0, 1]\to\mathbb{R}:t\mapsto \sum_{i=0}^{3}\alpha_i t^i
@@ -557,7 +557,7 @@ and consequently less bug-prone.
 \subsection{The Clojure programming language}
 Clojure is inspired from the \emph{Lisp} programming language, which dates back
 to 1958. Like Lisp, it offers fully-parenthesised syntax with prefix notation,
-and is based on the \emph{Lambda calculus} \citep{Rojas_atutorial}.
+and is inspired from the \emph{Lambda calculus} \citep{Rojas_atutorial}.
 
 \paragraph{}
 In order to manipulate audio data in Clojure, the music library \emph{Overtone}
@@ -565,7 +565,7 @@ is used. It allows a very large range of features for music manipulation and
 generation, through the use of \emph{generators}. A generator is a function
 object that can be used to generate sound, or to control the value of a
 parameter over the time. A generator can also be parametrized by other
-generator, allowing a great flexibility and creativity in its design.
+generators, allowing a great flexibility and creativity in its design.
 
 \paragraph{}
 The goal of the implementation in Clojure is to show the various concepts
