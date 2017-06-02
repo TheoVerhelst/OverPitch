@@ -98,20 +98,20 @@ vocoder} in order to refine the frequencies estimates, and are thus named
 vocoder. The idea is to preserve phase continuity across all frequencies, and
 not only on the most prominent frequency as in time-domain TSM, by exploiting
 the frequency-domain representation of the sound. PV-TSM behaves well on
-polyphonic signals, but are subject to vertical phase incoherence, i.e. the
+polyphonic signals, but is subject to vertical phase incoherence, i.e. the
 relationship between the phases of different frequencies at a point of time is
 not preserved, leading to audible artifacts, known as \emph{phasiness}, or
 \emph{loss of presence}.
 
 \section{General procedure}
 \label{sec:procedure}
-Pitch shifting process is split in two steps: \begin{enumerate*}[label=\arabic*)]
-\item apply a TSM procedure \item resample the signal\end{enumerate*}. Let
-\(\alpha\) be the scaling factor. We first apply a TSM procedure with parameter
-\(\alpha\), so that the playback speed is modified, while the pitch is left
-unmodified. Then, we resample the signal by a factor \(1/\alpha\), so that the
-playback speed of the signal is the same as the original, but the pitch is
-multiplied by \(\alpha\).
+Pitch shifting process is split in two steps:
+\begin{enumerate*}[label=\arabic*)] \item apply a TSM procedure \item resample
+the signal\end{enumerate*}. Let \(\alpha\) be the scaling factor. We first apply
+a TSM procedure with parameter \(\alpha\), so that the duration of the signal is
+modified, while the pitch is left unmodified. Then, we resample the signal by a
+factor \(1/\alpha\), so that the duration of the signal is the same as the
+original, but the pitch is multiplied by \(\alpha\).
 
 \paragraph{}
 For the TSM part, we use a simple phase vocoder with phase propagation. For the
@@ -163,7 +163,7 @@ into \emph{synthesis frames} \(y_m\) before adding them to the output signal
 \paragraph{}
 \(H_s\) is usually set to \(N/2\) or \(N/4\), in order to have a constant
 overlap between the synthesis frames. And since we know that
-\(\alpha=\frac{H_s}{H_a}\), we then have \(H_a=\frac{H_s}{\alpha}\).
+\(\alpha=\frac{H_s}{H_a}\), we have \(H_a=\frac{H_s}{\alpha}\).
 
 \paragraph{}
 The method used to transform \(x_m\) into \(y_m\) is critical, as it determines
@@ -236,7 +236,7 @@ X(m,k)=\sum_{n=0}^{N-1}x_m(n)\exp(-2\pi ikn/N)
 \end{equation*}
 But this can lead to unexpected high amplitudes in the high frequencies: the
 Fourier transform works as if the signal was periodic with a period \(N\)
-\citep{Dolson1986}, i.e. as if we where computing the Fourier series of a signal
+\citep{Dolson1986}, i.e. as if we were computing the Fourier series of a signal
 \begin{equation}
 \tilde x:\mathbb{Z}\to\mathbb{R}:n\mapsto x_m(n\mod N)
 \end{equation}
@@ -277,7 +277,7 @@ We also have to determine the phase \(\arg(Y(m,k))\), so that we can synthesise
 the synthesis frame \(y_m\) from the synthesis time-frequency bins \(Y(m,k)\).
 Note that the modified STFT may not be invertible, i.e. there may be no signal
 \(y\) whose STFT is \(Y(m,k)\). However, there is a procedure described in
-\citep{signalEstim} that minimizes the squared error between \(Y(m,k)\) and the
+\citep{signalEstim} that minimises the squared error between \(Y(m,k)\) and the
 STFT of the resulting signal. It results that the synthesis frame \(y_m\) is
 given by:
 \begin{equation}
@@ -308,7 +308,7 @@ transform yields coefficients for a finite quantity of frequencies, and that may
 be insufficient to characterise exactly the underlying sinusoids involved in the
 Fourier series decomposition of the signal. However, it is possible to refine
 the frequency of the \(k\)th frequency index by using the phases of the current
-and next frame. This refined frequency is called the \emph{instantaneous
+and next frames. This refined frequency is called the \emph{instantaneous
 frequency} and is denoted by \(F_{\text{coeff}}^{\text{IF}}(m,k)\).
 \begin{notation}
 Let \[\phi_m:=\arg(X(m,k))\]
@@ -398,10 +398,10 @@ coherence. But the phase relationship between the frequency channels in one
 frame is no longer respected. This relationship is called vertical phase
 coherence. This leads to phasiness, and the resulting sound is characteristic of
 phase-vocoder techniques \citep{Laroche1999}. Another effect is transient
-smearing: in musical signals with percussions, such as drums, the percussive
-aspect of the sound results of the subtle and sudden tuning of the phases of
-various sinusoids in the signal. And because of the lack of vertical phase
-coherence, the percussive aspect of transients is significantly reduced.
+smearing: in musical signals with percussive sounds, such as drums, the
+percussive aspect of the sound results of the subtle and sudden tuning of the
+phases of various sinusoids in the signal. And because of the lack of vertical
+phase coherence, the percussive aspect of transients is significantly reduced.
 
 \paragraph{}
 
@@ -455,7 +455,7 @@ sample a new signal \(y\) at a sampling period \(T'\):
 
 \subsection{Procedure}
 In order to construct the continuous-time signal, we need an interpolator. There
-exists various interpolators, such as truncated sinc
+exist various interpolators, such as truncated sinc
 \citep{duncan1988fundamentals, rossum1989an}, linear-interpolator
 \citep{rossum1993}, b-spline interpolator \citep{Sankar1998},
 Lagrange interpolator \citep{Schafer1973}. We chose 3rd order Hermite spline
@@ -539,18 +539,18 @@ even in distortion or clipping of the signal, which is clearly not ideal.
 Although the main objective of this thesis is to accomplish a research work on a
 scientific subject, another one is to discover the functionnal paradigm for
 programming languages, and the functionnal language \emph{Clojure}. Functionnal
-programming constrasts with the widely-used imperative paradigm. It is aimed to
-build stronger softwares, based on the concept of \emph{pure function}. A
-functions is said to be pure if it is free of any noticeable side-effect, and if
-it always returns the same result for a given set of arguments. Common
-mathematical functions, such as \(\sin\), are typical examples of pure function,
-whereas the usual \codeinl{print} function is not, since it outputs characters
-to some output device.
+programming constrasts with other widely-used paradigms, such as imperative or
+object-oriented. It is aimed to build stronger softwares, based on the concept
+of \emph{pure function}. A functions is said to be pure if it is free of any
+noticeable side-effect, and if it always returns the same result for a given set
+of arguments. Common mathematical functions, such as \(\sin\), are typical
+examples of pure function, whereas the usual \codeinl{print} function is not,
+since it outputs characters to some output device.
 
 \paragraph{}
 Functionnal purity improves reliability of software by ensuring that when a pure
 function is called, all the consequences of this call are known by just looking
-at the caller code. Obviously, not all function are suited to be pure. But the
+at the caller code. Obviously, not all functions are suited to be pure. But the
 more the code is functionnaly pure, the more the software is side-effect free,
 and consequently less bug-prone.
 
@@ -564,7 +564,7 @@ In order to manipulate audio data in Clojure, the music library \emph{Overtone}
 is used. It allows a very large range of features for music manipulation and
 generation, through the use of \emph{generators}. A generator is a function
 object that can be used to generate sound, or to control the value of a
-parameter over the time. A generator can also be parametrized by other
+parameter over the time. A generator can also be parametrised by other
 generators, allowing a great flexibility and creativity in its design.
 
 \paragraph{}
@@ -624,7 +624,7 @@ implementation in Java has been written, and a speed improvement of factor 50
 has been noted, although no care has been addressed to code optimization.
 
 \paragraph{}
-The code of this implementation can be freely accessed at the url
+The code of the Clojure implementation can be freely accessed at the url
 \url{https://github.com/TheoVerhelst/OverPitch} (last accessed \today).
 
 \section{Conclusion}
@@ -643,9 +643,11 @@ lower-level programming language such as Java enables a significant improvement
 in performances.
 
 \section{Acknowledgements}
-We thanks J. Driedger and M. Müller for their remarkable work in fostering the
-common time-scale procedures, and for the clear schematics, that have been
-used and adapted in this thesis.
+We thank B. Fortz for allowing us to work on this great subject of research,
+despite the fact that it was already taken by another student. We also thank J.
+Driedger and M. Müller for their remarkable work in fostering the common
+time-scale procedures, and for the clear schematics, that have been used and
+adapted in this thesis.
 
 \footnotesize
 \bibliographystyle{apalike}
